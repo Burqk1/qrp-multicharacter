@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'LB Scripts'
+author 'Qrp Scripts'
 description 'Modern QB-Core Multicharacter System'
 version '1.0.0'
 

@@ -25,15 +25,6 @@ const charInfo = computed(() => {
   }
 })
 
-const money = computed(() => {
-  if (!props.slot.character?.money) return null
-  try {
-    return JSON.parse(props.slot.character.money)
-  } catch {
-    return null
-  }
-})
-
 const job = computed(() => {
   if (!props.slot.character?.job) return null
   try {
@@ -47,13 +38,6 @@ const fullName = computed(() => {
   if (!charInfo.value) return null
   return `${charInfo.value.firstname} ${charInfo.value.lastname}`
 })
-
-const formatMoney = (amount) => {
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY'
-  }).format(amount || 0)
-}
 </script>
 
 <template>
@@ -104,11 +88,6 @@ const formatMoney = (amount) => {
         <div v-if="job" class="flex items-center justify-between bg-slate-900/50 rounded-lg px-3 py-2">
           <span class="text-xs text-gray-400">Meslek</span>
           <span class="text-sm font-semibold text-blue-400">{{ job.label }}</span>
-        </div>
-
-        <div v-if="money" class="flex items-center justify-between bg-slate-900/50 rounded-lg px-3 py-2">
-          <span class="text-xs text-gray-400">Banka</span>
-          <span class="text-sm font-semibold text-green-400">{{ formatMoney(money.bank) }}</span>
         </div>
 
         <div v-if="charInfo?.birthdate" class="flex items-center justify-between bg-slate-900/50 rounded-lg px-3 py-2">

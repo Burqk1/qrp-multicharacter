@@ -11,7 +11,7 @@ CreateThread(function()
     while true do
         Wait(0)
         if NetworkIsSessionStarted() then
-            TriggerServerEvent('lb-multicharacter:server:requestCharacters')
+            TriggerServerEvent('qrp-multicharacter:server:requestCharacters')
             return
         end
     end
@@ -38,13 +38,18 @@ RegisterNUICallback('changeSpawnLocation', function(data, cb)
     end
 
     local coords = data.coords
-    local camHeight = 80.0 -- Kamera yüksekliği
-    local camDistance = 100.0 -- Kameradan lokasyona mesafe
+    local camHeight = 80.0
+    local camDistance = 100.0
 
     local camX = coords.x - camDistance
     local camY = coords.y - camDistance
     local camZ = coords.z + camHeight
 
+    -- Fade out başlat
+    DoScreenFadeOut(300)
+    Citizen.Wait(300)
+
+    -- Collision request
     RequestCollisionAtCoord(coords.x, coords.y, coords.z)
 
     local loadRadius = 200.0
@@ -58,9 +63,25 @@ RegisterNUICallback('changeSpawnLocation', function(data, cb)
 
     SetFocusArea(coords.x, coords.y, coords.z, 0.0, 0.0, 0.0)
 
+    -- Collision yüklenene kadar bekle
+    local collisionTimeout = GetGameTimer() + 3000
+    while GetGameTimer() < collisionTimeout do
+        if HasCollisionLoadedAroundEntity(PlayerPedId()) then
+            break
+        end
+        RequestCollisionAtCoord(coords.x, coords.y, coords.z)
+        Citizen.Wait(0)
+    end
+
+    -- Kamera pozisyonunu ayarla
     SetCamCoord(cam, camX, camY, camZ)
     PointCamAtCoord(cam, coords.x, coords.y, coords.z + 2.0)
     SetCamFov(cam, 50.0)
+
+    Citizen.Wait(100)
+
+    -- Fade in başlat
+    DoScreenFadeIn(300)
 
     cb('ok')
 end)
@@ -77,7 +98,6 @@ RegisterNUICallback('spawnPlayer', function(data, cb)
         action = 'closeUI'
     })
 
-    ClearFocus()
     if cam then
         DestroyCamera()
     end
@@ -106,18 +126,37 @@ RegisterNUICallback('selectCharacter', function(data, cb)
     end
 
     if currentPed and DoesEntityExist(currentPed) then
-        TaskPlayAnim(currentPed, "friends@frj@ig_1", "wave_a", 8.0, -8.0, 2000, 0, 0, false, false, false)
+        if not HasAnimDictLoaded("friends@frj@ig_1") then
+            RequestAnimDict("friends@frj@ig_1")
+            local animTimeout = GetGameTimer() + 2000
+            while not HasAnimDictLoaded("friends@frj@ig_1") and GetGameTimer() < animTimeout do
+                Citizen.Wait(0)
+            end
+        end
 
-        local animStartTime = GetGameTimer()
-        while GetGameTimer() - animStartTime < 6000 and DoesEntityExist(currentPed) do
-            Wait(0)
-            if not IsEntityPlayingAnim(currentPed, "friends@frj@ig_1", "wave_a", 3) then
-                break
+        if HasAnimDictLoaded("friends@frj@ig_1") then
+            TaskPlayAnim(currentPed, "friends@frj@ig_1", "wave_a", 8.0, -8.0, 3000, 0, 0, false, false, false)
+
+            local animWaitTimeout = GetGameTimer() + 500
+            while GetGameTimer() < animWaitTimeout do
+                if IsEntityPlayingAnim(currentPed, "friends@frj@ig_1", "wave_a", 3) then
+                    break
+                end
+                Citizen.Wait(0)
+            end
+
+            -- Animasyonun bitmesini bekle (2.5 saniye)
+            local animStartTime = GetGameTimer()
+            while GetGameTimer() - animStartTime < 2500 and DoesEntityExist(currentPed) do
+                if not IsEntityPlayingAnim(currentPed, "friends@frj@ig_1", "wave_a", 3) then
+                    break
+                end
+                Citizen.Wait(0)
             end
         end
     end
 
-    TriggerServerEvent('lb-multicharacter:server:selectCharacter', data.citizenid)
+    TriggerServerEvent('qrp-multicharacter:server:selectCharacter', data.citizenid)
 
     cb('ok')
 end)
@@ -125,7 +164,7 @@ end)
 RegisterNUICallback('createCharacter', function(data, cb)
     CloseCharacterSelection()
 
-    TriggerServerEvent('lb-multicharacter:server:createCharacter', data)
+    TriggerServerEvent('qrp-multicharacter:server:createCharacter', data)
 
     cb('ok')
 end)
@@ -148,7 +187,6 @@ RegisterNUICallback('changeSlot', function(data, cb)
             DeleteEntity(currentPed)
             currentPed = nil
 
-            ClearFocus()
 
             if Config.Camera.mode == "cinematic" and Config.Camera.cinematic.useRPC then
                 local idleCam = Config.Camera.cinematic.camera.idle
@@ -162,7 +200,6 @@ RegisterNUICallback('changeSlot', function(data, cb)
         return
     end
 
-    -- Aynı karaktere tekrar tıklanırsa işlemi atla
     if data.citizenid == lastSelectedCitizenid then
         cb('ok')
         return
@@ -173,7 +210,6 @@ RegisterNUICallback('changeSlot', function(data, cb)
 
     local oldPedLocation = nil
     if currentPed and DoesEntityExist(currentPed) then
-        -- Eski karakterin konumunu kaydet
         oldPedLocation = GetEntityCoords(currentPed)
 
         if cinematicThread then
@@ -186,46 +222,42 @@ RegisterNUICallback('changeSlot', function(data, cb)
     cb('ok')
 
     if Config.Debug then
-        print("[lb-multicharacter] Requesting appearance for: " .. tostring(data.citizenid))
+        print("[qrp-multicharacter] Requesting appearance for: " .. tostring(data.citizenid))
     end
 
-    -- Eğer eski karakter varsa, önce kamerayı yukarı çıkar
     if oldPedLocation then
         TransitionCameraToSky(oldPedLocation, function()
-            -- Eski karakteri sil
             if currentPed and DoesEntityExist(currentPed) then
                 DeleteEntity(currentPed)
                 currentPed = nil
             end
-            ClearFocus()
 
-            -- Yeni karakteri yükle
-            QBCore.Functions.TriggerCallback('lb-multicharacter:server:getAppearance', function(appearance)
+            QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
                 if Config.Debug then
-                    print("[lb-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+                    print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
                 end
 
                 if data.citizenid == lastSelectedCitizenid then
-                    TransitionToCharacter(data.citizenid, appearance, true) -- true = from sky transition
+                    TransitionToCharacter(data.citizenid, appearance, true) 
                 else
                     if Config.Debug then
-                        print("[lb-multicharacter] Character changed, canceling transition")
+                        print("[qrp-multicharacter] Character changed, canceling transition")
                     end
                     isTransitioning = false
                 end
             end, data.citizenid)
         end)
     else
-        QBCore.Functions.TriggerCallback('lb-multicharacter:server:getAppearance', function(appearance)
+        QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
             if Config.Debug then
-                print("[lb-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+                print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
             end
 
             if data.citizenid == lastSelectedCitizenid then
-                TransitionToCharacter(data.citizenid, appearance, false) -- false = normal transition
+                TransitionToCharacter(data.citizenid, appearance, false) 
             else
                 if Config.Debug then
-                    print("[lb-multicharacter] Character changed, canceling transition")
+                    print("[qrp-multicharacter] Character changed, canceling transition")
                 end
                 isTransitioning = false
             end
@@ -243,7 +275,7 @@ RegisterNUICallback('deleteCharacter', function(data, cb)
         -- TODO: Onay dialogu eklenebilir
     end
 
-    TriggerServerEvent('lb-multicharacter:server:deleteCharacter', data.citizenid)
+    TriggerServerEvent('qrp-multicharacter:server:deleteCharacter', data.citizenid)
 
     cb('ok')
 end)
@@ -356,7 +388,7 @@ function ApplyClothingAppearance(ped, data)
     if Config.Debug and data.model then
         local currentModel = GetEntityModel(ped)
         local newModel = type(data.model) == "string" and GetHashKey(data.model) or data.model
-        print("[lb-multicharacter] Skipping model change in character selection (Current: " .. tostring(currentModel) .. ", Data: " .. tostring(newModel) .. ")")
+        print("[qrp-multicharacter] Skipping model change in character selection (Current: " .. tostring(currentModel) .. ", Data: " .. tostring(newModel) .. ")")
     end
 
     if data.headBlend then
@@ -425,7 +457,7 @@ function ApplyClothingAppearance(ped, data)
     end
 
     if Config.Debug then
-        print("[lb-multicharacter] Appearance applied successfully!")
+        print("[qrp-multicharacter] Appearance applied successfully!")
     end
 end
 
@@ -457,25 +489,23 @@ end
 function TransitionCameraToSky(pedLocation, callback)
     local config = Config.Camera.cinematic
     local idleCam = config.camera.idle
-    local duration = 1500 -- 1.5 saniye yukarı çıkış
+    local duration = 1500 
 
     if Config.Debug then
-        print("[lb-multicharacter] Transitioning camera to sky from: " .. tostring(pedLocation))
+        print("[qrp-multicharacter] Transitioning camera to sky from: " .. tostring(pedLocation))
     end
 
     local currentCamPos = GetCamCoord(cam)
 
-    -- Şu anki bakış noktasını al
     local currentLookAt = vector3(
         pedLocation.x,
         pedLocation.y,
         pedLocation.z + 0.5
     )
 
-    -- Hedef: Karakterin tam üstünde gökyüzü pozisyonu (GTA gibi)
     local targetSkyX = pedLocation.x
     local targetSkyY = pedLocation.y
-    local targetSkyZ = pedLocation.z + 100.0 -- Karakterin 100 birim üstü
+    local targetSkyZ = pedLocation.z + 100.0 
 
     CreateThread(function()
         local startTime = GetGameTimer()
@@ -484,17 +514,14 @@ function TransitionCameraToSky(pedLocation, callback)
             local elapsed = GetGameTimer() - startTime
             local progress = math.min(elapsed / duration, 1.0)
 
-            -- Ease-out cubic (hızlı başlayıp yavaşlayarak yukarı çık)
             local easeProgress = 1 - math.pow(1 - progress, 3)
 
-            -- Karakterin üstüne doğru yukarı çık (GTA gibi)
             local camX = currentCamPos.x + (targetSkyX - currentCamPos.x) * easeProgress
             local camY = currentCamPos.y + (targetSkyY - currentCamPos.y) * easeProgress
             local camZ = currentCamPos.z + (targetSkyZ - currentCamPos.z) * easeProgress
 
             SetCamCoord(cam, camX, camY, camZ)
 
-            -- Bakış noktasını da yukarı kaydır (böylece heading sabit kalır)
             local lookAtZ = currentLookAt.z + (currentLookAt.z + 50.0 - currentLookAt.z) * easeProgress
             PointCamAtCoord(cam, pedLocation.x, pedLocation.y, lookAtZ)
 
@@ -503,16 +530,14 @@ function TransitionCameraToSky(pedLocation, callback)
             Wait(0)
         end
 
-        -- Son pozisyon: Karakterin tam üstünde, aşağı bakıyor
         SetCamCoord(cam, targetSkyX, targetSkyY, targetSkyZ)
         PointCamAtCoord(cam, pedLocation.x, pedLocation.y, pedLocation.z)
         SetCamFov(cam, 50.0)
 
         if Config.Debug then
-            print("[lb-multicharacter] Camera reached sky position above character")
+            print("[qrp-multicharacter] Camera reached sky position above character")
         end
 
-        -- Callback'i çağır (yeni karakteri yüklemek için)
         if callback then
             callback()
         end
@@ -521,7 +546,7 @@ end
 
 function TransitionToCharacter(citizenid, appearance, fromSky)
     if Config.Debug then
-        print("[lb-multicharacter] TransitionToCharacter called for: " .. tostring(citizenid))
+        print("[qrp-multicharacter] TransitionToCharacter called for: " .. tostring(citizenid))
     end
 
     local config = Config.Camera.cinematic
@@ -543,12 +568,22 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
     end
 
     if Config.Debug then
-        print("[lb-multicharacter] Loading model: " .. pedModel)
+        print("[qrp-multicharacter] Loading model: " .. pedModel)
     end
 
     RequestModel(GetHashKey(pedModel))
-    while not HasModelLoaded(GetHashKey(pedModel)) do
-        Wait(10)
+    local modelTimeout = GetGameTimer() + 5000
+    while not HasModelLoaded(GetHashKey(pedModel)) and GetGameTimer() < modelTimeout do
+        RequestModel(GetHashKey(pedModel))
+        Citizen.Wait(0)
+    end
+
+    if not HasModelLoaded(GetHashKey(pedModel)) then
+        if Config.Debug then
+            print("[qrp-multicharacter] ERROR: Model could not be loaded!")
+        end
+        isTransitioning = false
+        return
     end
 
     local loadRadius = 200.0
@@ -560,17 +595,27 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
         RequestCollisionAtCoord(location.x + offsetX, location.y + offsetY, location.z)
     end
     RequestCollisionAtCoord(location.x, location.y, location.z)
+    SetFocusArea(location.x, location.y, location.z, 0.0, 0.0, 0.0)
 
-    Wait(1000)
+    local collisionTimeout = GetGameTimer() + 5000
+    while GetGameTimer() < collisionTimeout do
+        if HasCollisionLoadedAroundEntity(PlayerPedId()) then
+            break
+        end
+        RequestCollisionAtCoord(location.x, location.y, location.z)
+        Citizen.Wait(0)
+    end
+
+    Citizen.Wait(300)
 
     if Config.Debug then
-        print("[lb-multicharacter] Creating ped at: " .. tostring(location))
+        print("[qrp-multicharacter] Creating ped at: " .. tostring(location))
     end
 
     currentPed = CreatePed(4, GetHashKey(pedModel), location.x, location.y, location.z, location.w, false, true)
 
     if Config.Debug then
-        print("[lb-multicharacter] Ped created: " .. tostring(currentPed) .. " - Exists: " .. tostring(DoesEntityExist(currentPed)))
+        print("[qrp-multicharacter] Ped created: " .. tostring(currentPed) .. " - Exists: " .. tostring(DoesEntityExist(currentPed)))
     end
 
     SetEntityAsMissionEntity(currentPed, true, true)
@@ -578,8 +623,8 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
     SetBlockingOfNonTemporaryEvents(currentPed, true)
 
     SetPedCanRagdoll(currentPed, false)
-    SetPedConfigFlag(currentPed, 17, true) -- CPED_CONFIG_FLAG_BlockNonTemporaryEvents
-    SetPedConfigFlag(currentPed, 126, true) -- CPED_CONFIG_FLAG_ForcePostCameraAIUpdate
+    SetPedConfigFlag(currentPed, 17, true) 
+    SetPedConfigFlag(currentPed, 126, true) 
     SetPedSteersAroundPeds(currentPed, true)
     SetPedSteersAroundObjects(currentPed, true)
     SetPedSteersAroundVehicles(currentPed, true)
@@ -590,9 +635,9 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
 
     if appearance then
         if Config.Debug then
-            print("[lb-multicharacter] Applying appearance...")
+            print("[qrp-multicharacter] Applying appearance...")
         end
-        Wait(100) -- Ped'in tam yüklenmesi için kısa bir bekleme
+        Citizen.Wait(100) 
         UpdatePedAppearance(appearance)
 
         if currentPed and DoesEntityExist(currentPed) then
@@ -608,39 +653,41 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
             FreezeEntityPosition(currentPed, false)
 
             if Config.Debug then
-                print("[lb-multicharacter] Ped properties reapplied after appearance")
+                print("[qrp-multicharacter] Ped properties reapplied after appearance")
             end
         end
     else
         if Config.Debug then
-            print("[lb-multicharacter] No appearance data!")
+            print("[qrp-multicharacter] No appearance data!")
         end
     end
 
     if not currentPed or not DoesEntityExist(currentPed) then
         if Config.Debug then
-            print("[lb-multicharacter] ERROR: Ped does not exist after appearance!")
+            print("[qrp-multicharacter] ERROR: Ped does not exist after appearance!")
         end
         isTransitioning = false
         return
     end
 
     RequestAnimDict(config.walkAnimation)
-    while not HasAnimDictLoaded(config.walkAnimation) do
-        Wait(10)
+    local walkAnimTimeout = GetGameTimer() + 2000
+    while not HasAnimDictLoaded(config.walkAnimation) and GetGameTimer() < walkAnimTimeout do
+        RequestAnimDict(config.walkAnimation)
+        Citizen.Wait(0)
     end
 
     local activityIndex = math.random(1, #config.initialActivities)
     local initialActivity = config.initialActivities[activityIndex]
 
     if Config.Debug then
-        print("[lb-multicharacter] Starting activity: " .. initialActivity)
+        print("[qrp-multicharacter] Starting activity: " .. initialActivity)
     end
 
     StartInitialActivity(initialActivity)
 
     if Config.Debug then
-        print("[lb-multicharacter] Starting camera transition... (fromSky: " .. tostring(fromSky or false) .. ")")
+        print("[qrp-multicharacter] Starting camera transition... (fromSky: " .. tostring(fromSky or false) .. ")")
     end
 
     SmoothCameraTransition(location, fromSky)
@@ -649,9 +696,9 @@ end
 function SmoothCameraTransition(pedLocation, fromSky)
     local config = Config.Camera.cinematic
     local idleCam = config.camera.idle
-    local transitionDuration = fromSky and 2000 or config.camera.transition.duration 
+    local transitionDuration = fromSky and 2000 or config.camera.transition.duration
 
-    Wait(100) 
+    Citizen.Wait(100)
     local forwardVector = GetEntityForwardVector(currentPed)
 
     local followCam = config.camera.follow
@@ -666,10 +713,26 @@ function SmoothCameraTransition(pedLocation, fromSky)
     CreateThread(function()
         if fromSky then
             if Config.Debug then
-                print("[lb-multicharacter] Camera descending from sky...")
+                print("[qrp-multicharacter] Camera descending from sky...")
             end
 
             local currentCamPos = GetCamCoord(cam)
+
+            RequestCollisionAtCoord(pedLocation.x, pedLocation.y, pedLocation.z)
+            SetFocusArea(pedLocation.x, pedLocation.y, pedLocation.z, 0.0, 0.0, 0.0)
+
+            local collisionTimeout = GetGameTimer() + 3000
+            while GetGameTimer() < collisionTimeout do
+                if HasCollisionLoadedAroundEntity(currentPed) then
+                    break
+                end
+                RequestCollisionAtCoord(pedLocation.x, pedLocation.y, pedLocation.z)
+                Citizen.Wait(0)
+            end
+
+            if Config.Debug then
+                print("[qrp-multicharacter] Collision loaded, starting camera movement")
+            end
 
             local startTime = GetGameTimer()
 
@@ -681,16 +744,13 @@ function SmoothCameraTransition(pedLocation, fromSky)
 
                 local camX = currentCamPos.x + (midpointX - currentCamPos.x) * easeProgress
                 local camY = currentCamPos.y + (midpointY - currentCamPos.y) * easeProgress
-                local camZ = midpointZ -- Gökyüzünde kal
+                local camZ = midpointZ 
 
                 SetCamCoord(cam, camX, camY, camZ)
                 PointCamAtCoord(cam, pedLocation.x, pedLocation.y, pedLocation.z + 0.5)
                 SetCamFov(cam, 50.0)
 
-                RequestCollisionAtCoord(pedLocation.x, pedLocation.y, pedLocation.z)
-                SetFocusArea(pedLocation.x, pedLocation.y, pedLocation.z, 0.0, 0.0, 0.0)
-
-                Wait(0)
+                Citizen.Wait(0)
             end
 
             local descendStart = GetGameTimer()
@@ -698,7 +758,7 @@ function SmoothCameraTransition(pedLocation, fromSky)
             while GetGameTimer() - descendStart < descendDuration do
                 local elapsed = GetGameTimer() - descendStart
                 local progress = math.min(elapsed / descendDuration, 1.0)
-                local easeProgress = 1 - math.pow(1 - progress, 3) -- Ease-out
+                local easeProgress = 1 - math.pow(1 - progress, 3) 
 
                 local camX = midpointX + (targetCamX - midpointX) * easeProgress
                 local camY = midpointY + (targetCamY - midpointY) * easeProgress
@@ -710,7 +770,7 @@ function SmoothCameraTransition(pedLocation, fromSky)
                 local fov = 50.0 + (followCam.fov - 50.0) * easeProgress
                 SetCamFov(cam, fov)
 
-                Wait(0)
+                Citizen.Wait(0)
             end
 
         else
@@ -730,7 +790,7 @@ function SmoothCameraTransition(pedLocation, fromSky)
 
                 local lookX = idleCam.pointAt.x + (pedLocation.x - idleCam.pointAt.x) * easeProgress
                 local lookY = idleCam.pointAt.y + (pedLocation.y - idleCam.pointAt.y) * easeProgress
-                local lookZ = idleCam.pointAt.z -- Sabit yükseklik
+                local lookZ = idleCam.pointAt.z 
 
                 local fov = idleCam.fov + (followCam.fov - idleCam.fov) * easeProgress * 0.3
 
@@ -777,7 +837,7 @@ function SmoothCameraTransition(pedLocation, fromSky)
 
         isTransitioning = false
 
-        Wait(500)
+        Citizen.Wait(500)
     end)
 end
 
@@ -837,8 +897,8 @@ function StartWanderMode()
 
             local camX, camY, camZ
             if lastCamPos then
-                local lerpFactorXY = 0.08  -- Daha yumuşak (0.15 → 0.08)
-                local lerpFactorZ = 0.03   -- Daha yumuşak (0.05 → 0.03)
+                local lerpFactorXY = 0.08 
+                local lerpFactorZ = 0.03   
                 camX = lastCamPos.x + (targetCamX - lastCamPos.x) * lerpFactorXY
                 camY = lastCamPos.y + (targetCamY - lastCamPos.y) * lerpFactorXY
                 camZ = lastCamPos.z + (targetCamZ - lastCamPos.z) * lerpFactorZ
@@ -853,7 +913,7 @@ function StartWanderMode()
 
             local lookAtX, lookAtY, lookAtZ
             if lastLookAtPos then
-                local lookAtLerpFactor = 0.05  -- Daha yumuşak (0.1 → 0.05)
+                local lookAtLerpFactor = 0.05  
                 lookAtX = lastLookAtPos.x + (pedBoneCoords.x - lastLookAtPos.x) * lookAtLerpFactor
                 lookAtY = lastLookAtPos.y + (pedBoneCoords.y - lastLookAtPos.y) * lookAtLerpFactor
                 lookAtZ = lastLookAtPos.z + (pedBoneCoords.z - lastLookAtPos.z) * lookAtLerpFactor
@@ -942,7 +1002,6 @@ function CloseSpawnSelector()
 
     inSpawnSelector = false
 
-    ClearFocus()
 
     if cam then
         DestroyCamera()
@@ -954,15 +1013,15 @@ function CloseSpawnSelector()
     })
 end
 
-RegisterNetEvent('lb-multicharacter:client:openCharacterSelection', function(characters)
+RegisterNetEvent('qrp-multicharacter:client:openCharacterSelection', function(characters)
     OpenCharacterSelection(characters)
 end)
 
-RegisterNetEvent('lb-multicharacter:client:closeNUI', function()
+RegisterNetEvent('qrp-multicharacter:client:closeNUI', function()
     CloseCharacterSelection()
 end)
 
-RegisterNetEvent('lb-multicharacter:client:transitionToSpawnSelector', function(lastLocation)
+RegisterNetEvent('qrp-multicharacter:client:transitionToSpawnSelector', function(lastLocation)
     if currentPed and DoesEntityExist(currentPed) then
         if IsEntityPlayingAnim(currentPed, "friends@frj@ig_1", "wave_a", 3) then
             local waitStart = GetGameTimer()
@@ -1057,17 +1116,16 @@ RegisterNetEvent('lb-multicharacter:client:transitionToSpawnSelector', function(
         }
     })
 
-    -- Ekranı tekrar aydınlat
     DoScreenFadeIn(500)
 end)
 
-RegisterNetEvent('lb-multicharacter:client:openSpawnSelector', function(lastLocation)
+RegisterNetEvent('qrp-multicharacter:client:openSpawnSelector', function(lastLocation)
     CloseCharacterSelection()
     Wait(500)
     OpenSpawnSelector(lastLocation)
 end)
 
-RegisterNetEvent('lb-multicharacter:client:characterDeleted', function(characters)
+RegisterNetEvent('qrp-multicharacter:client:characterDeleted', function(characters)
     charData = characters
     SendNUIMessage({
         action = 'openUI',
@@ -1078,7 +1136,7 @@ RegisterNetEvent('lb-multicharacter:client:characterDeleted', function(character
     })
 end)
 
-RegisterNetEvent('lb-multicharacter:client:spawnPlayer', function(citizenid, spawnData)
+RegisterNetEvent('qrp-multicharacter:client:spawnPlayer', function(citizenid, spawnData)
     CloseCharacterSelection()
 
     TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
