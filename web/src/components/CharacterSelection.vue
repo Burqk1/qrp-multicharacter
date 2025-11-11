@@ -13,7 +13,7 @@ const props = defineProps({
   }
 })
 
-const selectedSlot = ref(-1) // Hiçbir karakter başlangıçta seçili değil
+const selectedSlot = ref(-1) 
 const showCreation = ref(false)
 const showNationalityDropdown = ref(false)
 const isTransitioning = ref(false)
@@ -118,7 +118,6 @@ const selectSlot = async (index) => {
     showCreation.value = false
     await fetchNui('changeSlot', { citizenid: slot.character.citizenid })
 
-    // Smooth transition için kısa bir bekleme
     setTimeout(() => {
       isTransitioning.value = false
     }, 400)
@@ -128,7 +127,7 @@ const selectSlot = async (index) => {
 const handlePlay = async () => {
   const slot = currentCharacter.value
   if (slot.isEmpty) {
-    // Form submit edilecek, bu fonksiyon çağrılmamalı
+  
     return
   } else {
     await fetchNui('selectCharacter', { citizenid: slot.character.citizenid })
@@ -178,7 +177,7 @@ const toggleNationalityDropdown = () => {
 }
 
 const handleKeydown = (event) => {
-  if (showCreation.value) return // Karakter oluşturma formunda iken arrow key'leri devre dışı bırak
+  if (showCreation.value) return 
 
   if (event.key === 'ArrowLeft') {
     event.preventDefault()
