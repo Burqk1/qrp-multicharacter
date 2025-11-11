@@ -11,6 +11,10 @@ CreateThread(function()
     while true do
         Wait(0)
         if NetworkIsSessionStarted() then
+            Citizen.Wait(1500)
+            ShutdownLoadingScreen()
+            ShutdownLoadingScreenNui()
+            Citizen.Wait(500)
             TriggerServerEvent('qrp-multicharacter:server:requestCharacters')
             return
         end
@@ -45,11 +49,9 @@ RegisterNUICallback('changeSpawnLocation', function(data, cb)
     local camY = coords.y - camDistance
     local camZ = coords.z + camHeight
 
-    -- Fade out başlat
     DoScreenFadeOut(300)
     Citizen.Wait(300)
 
-    -- Collision request
     RequestCollisionAtCoord(coords.x, coords.y, coords.z)
 
     local loadRadius = 200.0
@@ -63,7 +65,6 @@ RegisterNUICallback('changeSpawnLocation', function(data, cb)
 
     SetFocusArea(coords.x, coords.y, coords.z, 0.0, 0.0, 0.0)
 
-    -- Collision yüklenene kadar bekle
     local collisionTimeout = GetGameTimer() + 3000
     while GetGameTimer() < collisionTimeout do
         if HasCollisionLoadedAroundEntity(PlayerPedId()) then
@@ -73,14 +74,12 @@ RegisterNUICallback('changeSpawnLocation', function(data, cb)
         Citizen.Wait(0)
     end
 
-    -- Kamera pozisyonunu ayarla
     SetCamCoord(cam, camX, camY, camZ)
     PointCamAtCoord(cam, coords.x, coords.y, coords.z + 2.0)
     SetCamFov(cam, 50.0)
 
-    Citizen.Wait(100)
+    Citizen.Wait(1000)
 
-    -- Fade in başlat
     DoScreenFadeIn(300)
 
     cb('ok')
@@ -126,6 +125,17 @@ RegisterNUICallback('selectCharacter', function(data, cb)
     end
 
     if currentPed and DoesEntityExist(currentPed) then
+        ClearPedTasksImmediately(currentPed)
+        ClearPedSecondaryTask(currentPed)
+
+        if IsPedActiveInScenario(currentPed) then
+            ClearPedTasks(currentPed)
+        end
+
+        StopAnimTask(currentPed, "friends@frj@ig_1", "wave_a", -1.0)
+
+        Citizen.Wait(1000) 
+
         if not HasAnimDictLoaded("friends@frj@ig_1") then
             RequestAnimDict("friends@frj@ig_1")
             local animTimeout = GetGameTimer() + 2000
@@ -145,9 +155,8 @@ RegisterNUICallback('selectCharacter', function(data, cb)
                 Citizen.Wait(0)
             end
 
-            -- Animasyonun bitmesini bekle (2.5 saniye)
             local animStartTime = GetGameTimer()
-            while GetGameTimer() - animStartTime < 2500 and DoesEntityExist(currentPed) do
+            while GetGameTimer() - animStartTime < 7000 and DoesEntityExist(currentPed) do
                 if not IsEntityPlayingAnim(currentPed, "friends@frj@ig_1", "wave_a", 3) then
                     break
                 end
@@ -1181,37 +1190,7 @@ AddEventHandler('onResourceStop', function(resourceName)
     end
 end)
 
-if Config.Debug then
-    RegisterCommand('multichardebug', function()
-        local testChars = {
-            {
-                citizenid = 'TEST1',
-                charinfo = json.encode({
-                    firstname = 'Jhon',
-                    lastname = 'Duran',
-                    birthdate = '1990-01-01',
-                    nationality = 'USA',
-                    gender = 0,
-                    phone = '555-1234'
-                }),
-                money = json.encode({
-                    bank = 5000,
-                    cash = 1000
-                }),
-                job = json.encode({
-                    label = 'Police',
-                    grade = {name = 'Officer'}
-                })
-            }
-        }
-        OpenCharacterSelection(testChars)
-    end)
 
-    RegisterCommand('spawndebug', function()
-        local lastPos = vector4(327.56, -229.38, 54.22, 163.5) -- Motel
-        OpenSpawnSelector(lastPos)
-    end)
-end
 
 exports('OpenCharacterSelection', OpenCharacterSelection)
 exports('CloseCharacterSelection', CloseCharacterSelection)

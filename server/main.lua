@@ -86,7 +86,7 @@ local function SelectCharacter(source, citizenid)
     return true
 end
 
-RegisterNetEvent('lb-multicharacter:server:selectCharacter', function(citizenid)
+RegisterNetEvent('qrp-multicharacter:server:selectCharacter', function(citizenid)
     local src = source
 
     RemovePlayerFromBucket(src)
@@ -101,11 +101,11 @@ RegisterNetEvent('lb-multicharacter:server:selectCharacter', function(citizenid)
             end
         end
 
-        TriggerClientEvent('lb-multicharacter:client:transitionToSpawnSelector', src, lastPosition)
+        TriggerClientEvent('qrp-multicharacter:client:transitionToSpawnSelector', src, lastPosition)
     end
 end)
 
-RegisterNetEvent('lb-multicharacter:server:createCharacter', function(data)
+RegisterNetEvent('qrp-multicharacter:server:createCharacter', function(data)
     local src = source
 
     RemovePlayerFromBucket(src)
@@ -117,11 +117,11 @@ RegisterNetEvent('lb-multicharacter:server:createCharacter', function(data)
     if QBCore.Player.Login(src, false, newData) then
         Wait(500)
 
-        print('^2[lb-multicharacter]^7 ' .. GetPlayerName(src) .. ' yeni karakter oluşturdu!')
+        print('^2[qrp-multicharacter]^7 ' .. GetPlayerName(src) .. ' yeni karakter oluşturdu!')
 
         GiveStarterItems(src)
 
-        TriggerClientEvent('lb-multicharacter:client:closeNUI', src)
+        TriggerClientEvent('qrp-multicharacter:client:closeNUI', src)
 
         if Config.Appearance.openOnCreate then
             Wait(1000)
@@ -135,17 +135,17 @@ RegisterNetEvent('lb-multicharacter:server:createCharacter', function(data)
         end
 
         Wait(6000)
-        TriggerClientEvent('lb-multicharacter:client:openSpawnSelector', src, nil)
+        TriggerClientEvent('qrp-multicharacter:client:openSpawnSelector', src, nil)
     end
 end)
 
-RegisterNetEvent('lb-multicharacter:server:deleteCharacter', function(citizenid)
+RegisterNetEvent('qrp-multicharacter:server:deleteCharacter', function(citizenid)
     local src = source
 
     if DeleteCharacter(src, citizenid) then
         local license = QBCore.Functions.GetIdentifier(src, 'license')
         local characters = GetPlayerCharacters(license)
-        TriggerClientEvent('lb-multicharacter:client:characterDeleted', src, characters)
+        TriggerClientEvent('qrp-multicharacter:client:characterDeleted', src, characters)
     end
 end)
 
@@ -167,7 +167,7 @@ AddEventHandler('playerConnecting', function(name, setKickReason, deferrals)
     deferrals.done()
 end)
 
-RegisterNetEvent('lb-multicharacter:server:requestCharacters', function()
+RegisterNetEvent('qrp-multicharacter:server:requestCharacters', function()
     local src = source
     local license = QBCore.Functions.GetIdentifier(src, 'license')
 
@@ -179,7 +179,7 @@ RegisterNetEvent('lb-multicharacter:server:requestCharacters', function()
 
     local characters = GetPlayerCharacters(license)
 
-    TriggerClientEvent('lb-multicharacter:client:openCharacterSelection', src, characters)
+    TriggerClientEvent('qrp-multicharacter:client:openCharacterSelection', src, characters)
 end)
 
 AddEventHandler('playerDropped', function(reason)
@@ -187,7 +187,7 @@ AddEventHandler('playerDropped', function(reason)
     RemovePlayerFromBucket(src)
 end)
 
-QBCore.Functions.CreateCallback('lb-multicharacter:server:getAppearance', function(source, cb, citizenid)
+QBCore.Functions.CreateCallback('qrp-multicharacter:server:getAppearance', function(source, cb, citizenid)
     if not citizenid then
         cb(nil)
         return
@@ -227,5 +227,5 @@ exports('DeleteCharacter', DeleteCharacter)
 exports('SelectCharacter', SelectCharacter)
 
 if Config.Debug then
-    print('^2[lb-multicharacter]^7 Server started successfully!')
+    print('^2[qrp-multicharacter]^7 Server started successfully!')
 end

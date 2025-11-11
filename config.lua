@@ -147,4 +147,4 @@ Config.Appearance = {
 }
 
 -- Debug Mode
-Config.Debug = true -- Debug mesajlarını göster/gizle
+Config.Debug = false -- Debug mesajlarını göster/gizle
