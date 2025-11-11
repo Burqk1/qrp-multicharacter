@@ -1042,6 +1042,7 @@ RegisterNetEvent('qrp-multicharacter:client:transitionToSpawnSelector', function
         FreezeEntityPosition(currentPed, true)
     end
 
+    -- Sadece bir kere fade out yap
     DoScreenFadeOut(500)
     Wait(500)
 
@@ -1125,6 +1126,8 @@ RegisterNetEvent('qrp-multicharacter:client:transitionToSpawnSelector', function
         }
     })
 
+    -- Sadece bir kere fade in yap (en son olarak)
+    Wait(100)
     DoScreenFadeIn(500)
 end)
 
