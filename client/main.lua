@@ -101,6 +101,8 @@ RegisterNUICallback('spawnPlayer', function(data, cb)
         DestroyCamera()
     end
 
+    ClearFocus()
+
     DoScreenFadeOut(500)
     Wait(500)
 
@@ -320,6 +322,7 @@ function CloseCharacterSelection()
     inCharSelection = false
     lastSelectedCitizenid = nil
 
+    ClearFocus()
     DestroyCamera()
 
     if cinematicThread then
@@ -1011,6 +1014,7 @@ function CloseSpawnSelector()
 
     inSpawnSelector = false
 
+    ClearFocus()
 
     if cam then
         DestroyCamera()
@@ -1051,6 +1055,8 @@ RegisterNetEvent('qrp-multicharacter:client:transitionToSpawnSelector', function
         action = 'closeUI'
     })
 
+    -- Önceki focus'u temizle
+    ClearFocus()
     Wait(200)
 
     local targetLocation = lastLocation or Config.SpawnLocations[1].coords
