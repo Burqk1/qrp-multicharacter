@@ -19,6 +19,29 @@ end
 
 local function GetPlayerCharacters(license)
     local result = MySQL.query.await('SELECT * FROM players WHERE license = ?', {license})
+
+    if result then
+        for i = 1, #result do
+            local char = result[i]
+
+            if char.metadata then
+                local metadata = type(char.metadata) == 'string' and json.decode(char.metadata) or char.metadata
+
+                local playTime = metadata and metadata.playtime or 0
+
+                if not metadata then
+                    metadata = {}
+                end
+
+                metadata.playtime = playTime
+                result[i].metadata = json.encode(metadata)
+            else
+                local metadata = { playtime = 0 }
+                result[i].metadata = json.encode(metadata)
+            end
+        end
+    end
+
     return result or {}
 end
 

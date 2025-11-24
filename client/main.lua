@@ -14,6 +14,9 @@ CreateThread(function()
             Citizen.Wait(1500)
             ShutdownLoadingScreen()
             ShutdownLoadingScreenNui()
+
+            TriggerScreenblurFadeOut(0)
+
             Citizen.Wait(500)
             TriggerServerEvent('qrp-multicharacter:server:requestCharacters')
             return
@@ -219,37 +222,49 @@ RegisterNUICallback('changeSlot', function(data, cb)
     isTransitioning = true
     lastSelectedCitizenid = data.citizenid
 
-    local oldPedLocation = nil
-    if currentPed and DoesEntityExist(currentPed) then
-        oldPedLocation = GetEntityCoords(currentPed)
-
-        if cinematicThread then
-            cinematicThread = nil
-        end
-
-        ClearPedTasks(currentPed)
-    end
-
     cb('ok')
 
     if Config.Debug then
         print("[qrp-multicharacter] Requesting appearance for: " .. tostring(data.citizenid))
     end
 
-    if oldPedLocation then
-        TransitionCameraToSky(oldPedLocation, function()
-            if currentPed and DoesEntityExist(currentPed) then
-                DeleteEntity(currentPed)
-                currentPed = nil
-            end
+    if Config.Camera.mode == "static" then
+        local oldPedLocation = nil
+        if currentPed and DoesEntityExist(currentPed) then
+            oldPedLocation = GetEntityCoords(currentPed)
+            ClearPedTasks(currentPed)
+        end
 
+        if oldPedLocation then
+            TransitionCameraToSky(oldPedLocation, function()
+                if currentPed and DoesEntityExist(currentPed) then
+                    DeleteEntity(currentPed)
+                    currentPed = nil
+                end
+
+                QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
+                    if Config.Debug then
+                        print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+                    end
+
+                    if data.citizenid == lastSelectedCitizenid then
+                        CreateStaticCharacter(data.citizenid, appearance)
+                    else
+                        if Config.Debug then
+                            print("[qrp-multicharacter] Character changed, canceling transition")
+                        end
+                        isTransitioning = false
+                    end
+                end, data.citizenid)
+            end)
+        else
             QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
                 if Config.Debug then
                     print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
                 end
 
                 if data.citizenid == lastSelectedCitizenid then
-                    TransitionToCharacter(data.citizenid, appearance, true) 
+                    CreateStaticCharacter(data.citizenid, appearance)
                 else
                     if Config.Debug then
                         print("[qrp-multicharacter] Character changed, canceling transition")
@@ -257,22 +272,57 @@ RegisterNUICallback('changeSlot', function(data, cb)
                     isTransitioning = false
                 end
             end, data.citizenid)
-        end)
+        end
     else
-        QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
-            if Config.Debug then
-                print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+        local oldPedLocation = nil
+        if currentPed and DoesEntityExist(currentPed) then
+            oldPedLocation = GetEntityCoords(currentPed)
+
+            if cinematicThread then
+                cinematicThread = nil
             end
 
-            if data.citizenid == lastSelectedCitizenid then
-                TransitionToCharacter(data.citizenid, appearance, false) 
-            else
-                if Config.Debug then
-                    print("[qrp-multicharacter] Character changed, canceling transition")
+            ClearPedTasks(currentPed)
+        end
+
+        if oldPedLocation then
+            TransitionCameraToSky(oldPedLocation, function()
+                if currentPed and DoesEntityExist(currentPed) then
+                    DeleteEntity(currentPed)
+                    currentPed = nil
                 end
-                isTransitioning = false
-            end
-        end, data.citizenid)
+
+                QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
+                    if Config.Debug then
+                        print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+                    end
+
+                    if data.citizenid == lastSelectedCitizenid then
+                        TransitionToCharacter(data.citizenid, appearance, true)
+                    else
+                        if Config.Debug then
+                            print("[qrp-multicharacter] Character changed, canceling transition")
+                        end
+                        isTransitioning = false
+                    end
+                end, data.citizenid)
+            end)
+        else
+            QBCore.Functions.TriggerCallback('qrp-multicharacter:server:getAppearance', function(appearance)
+                if Config.Debug then
+                    print("[qrp-multicharacter] Appearance callback received. Has appearance: " .. tostring(appearance ~= nil))
+                end
+
+                if data.citizenid == lastSelectedCitizenid then
+                    TransitionToCharacter(data.citizenid, appearance, false)
+                else
+                    if Config.Debug then
+                        print("[qrp-multicharacter] Character changed, canceling transition")
+                    end
+                    isTransitioning = false
+                end
+            end, data.citizenid)
+        end
     end
 end)
 
@@ -303,6 +353,7 @@ function OpenCharacterSelection(characters)
     end
 
     SetupCamera()
+    StartDOFLoop()
 
     SetNuiFocus(true, true)
     SendNUIMessage({
@@ -339,6 +390,8 @@ function CloseCharacterSelection()
         action = 'closeUI'
     })
 
+    TriggerScreenblurFadeOut(0)
+
     EnablePlayerControls()
 end
 
@@ -357,23 +410,197 @@ function SetupCamera()
 end
 
 function SetupStaticCamera()
-    local coords = Config.Camera.static.coords
+    local staticConfig = Config.Camera.static
+
+    local playerPed = PlayerPedId()
+    SetEntityVisible(playerPed, false, false)
+    SetEntityCoords(playerPed, 0.0, 0.0, -1000.0)
+    FreezeEntityPosition(playerPed, true)
 
     cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
-    SetCamCoord(cam, coords.x, coords.y, coords.z)
-    SetCamRot(cam, 0.0, 0.0, coords.w, 2)
-    SetCamFov(cam, Config.Camera.static.fov)
-    SetCamActive(cam, true)
-    RenderScriptCams(true, false, 0, true, true)
 
-    if Config.Camera.static.enableBlur then
-        TriggerScreenblurFadeIn(Config.Camera.static.blurIntensity)
+    local idleCam = Config.Camera.cinematic.camera.idle
+    SetCamCoord(cam, idleCam.coords.x, idleCam.coords.y, idleCam.coords.z)
+    PointCamAtCoord(cam, idleCam.pointAt.x, idleCam.pointAt.y, idleCam.pointAt.z)
+    SetCamFov(cam, idleCam.fov)
+
+    if staticConfig.portraitMode then
+        SetCamUseShallowDofMode(cam, true)
+        SetCamNearDof(cam, 1.0)
+        SetCamFarDof(cam, 20.0)
+        SetCamDofStrength(cam, 10.0)
+
+        if Config.Debug then
+            print("[qrp-multicharacter] Portrait mode DOF blur enabled")
+        end
     end
 
-    local ped = PlayerPedId()
-    SetEntityVisible(ped, false, false)
-    SetEntityCoords(ped, coords.x, coords.y, coords.z - 10.0)
-    FreezeEntityPosition(ped, true)
+    SetCamActive(cam, true)
+    RenderScriptCams(true, true, 1000, true, true)
+
+    if Config.Debug then
+        print("[qrp-multicharacter] Static camera setup - FOV: " .. (staticConfig.fov or 50.0))
+    end
+end
+
+function StartDOFLoop()
+    local staticConfig = Config.Camera.static
+
+    if not staticConfig.portraitMode then
+        return
+    end
+
+    CreateThread(function()
+        while cam and DoesCamExist(cam) and inCharSelection do
+            SetUseHiDof()
+            Wait(0)
+        end
+    end)
+end
+
+function CreateStaticCharacter(citizenid, appearance)
+    if Config.Debug then
+        print("[qrp-multicharacter] Creating static character for: " .. tostring(citizenid))
+    end
+
+    local config = Config.Camera.cinematic
+
+    -- Rastgele lokasyon seç (cinematic gibi)
+    local randomIndex = math.random(1, #config.randomLocations)
+    local location = config.randomLocations[randomIndex]
+
+    -- Karakter modelini belirle
+    local pedModel = "mp_m_freemode_01"
+    if charData and #charData > 0 then
+        for _, char in ipairs(charData) do
+            if char.citizenid == citizenid then
+                local charinfo = json.decode(char.charinfo or "{}")
+                if charinfo.gender == 1 then
+                    pedModel = "mp_f_freemode_01"
+                end
+                break
+            end
+        end
+    end
+
+    if Config.Debug then
+        print("[qrp-multicharacter] Loading model: " .. pedModel)
+    end
+
+    -- Model yükleme
+    RequestModel(GetHashKey(pedModel))
+    local modelTimeout = GetGameTimer() + 5000
+    while not HasModelLoaded(GetHashKey(pedModel)) and GetGameTimer() < modelTimeout do
+        RequestModel(GetHashKey(pedModel))
+        Citizen.Wait(0)
+    end
+
+    if not HasModelLoaded(GetHashKey(pedModel)) then
+        if Config.Debug then
+            print("[qrp-multicharacter] ERROR: Model could not be loaded!")
+        end
+        return
+    end
+
+    -- Collision ve focus ayarla
+    local loadRadius = 200.0
+    for i = 1, 8 do
+        local angle = (i - 1) * 45
+        local rad = math.rad(angle)
+        local offsetX = math.cos(rad) * loadRadius
+        local offsetY = math.sin(rad) * loadRadius
+        RequestCollisionAtCoord(location.x + offsetX, location.y + offsetY, location.z)
+    end
+    RequestCollisionAtCoord(location.x, location.y, location.z)
+    SetFocusArea(location.x, location.y, location.z, 0.0, 0.0, 0.0)
+
+    local collisionTimeout = GetGameTimer() + 5000
+    while GetGameTimer() < collisionTimeout do
+        if HasCollisionLoadedAroundEntity(PlayerPedId()) then
+            break
+        end
+        RequestCollisionAtCoord(location.x, location.y, location.z)
+        Citizen.Wait(0)
+    end
+
+    Citizen.Wait(300)
+
+    -- Ped oluştur
+    currentPed = CreatePed(4, GetHashKey(pedModel), location.x, location.y, location.z, location.w, false, true)
+
+    if Config.Debug then
+        print("[qrp-multicharacter] Ped created: " .. tostring(currentPed) .. " - Exists: " .. tostring(DoesEntityExist(currentPed)))
+    end
+
+    -- Ped özelliklerini ayarla
+    SetEntityAsMissionEntity(currentPed, true, true)
+    SetEntityInvincible(currentPed, true)
+    SetBlockingOfNonTemporaryEvents(currentPed, true)
+    SetPedCanRagdoll(currentPed, false)
+    SetPedConfigFlag(currentPed, 17, true)
+    SetPedConfigFlag(currentPed, 126, true)
+
+    SetEntityCoordsNoOffset(currentPed, location.x, location.y, location.z, false, false, false)
+    PlaceObjectOnGroundProperly(currentPed)
+    FreezeEntityPosition(currentPed, true) -- STATIK: Karakter hareket etmemeli!
+
+    -- Görünüm uygula
+    if appearance then
+        Citizen.Wait(100)
+        UpdatePedAppearance(appearance)
+
+        if currentPed and DoesEntityExist(currentPed) then
+            SetEntityAsMissionEntity(currentPed, true, true)
+            SetEntityInvincible(currentPed, true)
+            SetBlockingOfNonTemporaryEvents(currentPed, true)
+            SetPedCanRagdoll(currentPed, false)
+            SetPedConfigFlag(currentPed, 17, true)
+            SetPedConfigFlag(currentPed, 126, true)
+            FreezeEntityPosition(currentPed, true)
+
+            if Config.Debug then
+                print("[qrp-multicharacter] Ped properties reapplied after appearance")
+            end
+        end
+    else
+        if Config.Debug then
+            print("[qrp-multicharacter] No appearance data!")
+        end
+    end
+
+    if not currentPed or not DoesEntityExist(currentPed) then
+        if Config.Debug then
+            print("[qrp-multicharacter] ERROR: Ped does not exist after appearance!")
+        end
+        return
+    end
+
+    -- Rastgele aktivite seç (cinematic gibi)
+    local activityIndex = math.random(1, #config.initialActivities)
+    local initialActivity = config.initialActivities[activityIndex]
+
+    if Config.Debug then
+        print("[qrp-multicharacter] Starting activity: " .. initialActivity)
+    end
+
+    -- Aktivite başlat ama yürüme değil, sadece animasyon
+    if initialActivity == "wander" then
+        -- Yürüme yerine stand animasyonu
+        TaskStartScenarioInPlace(currentPed, "WORLD_HUMAN_STAND_MOBILE", 0, true)
+    elseif initialActivity == "stand" then
+        TaskStartScenarioInPlace(currentPed, "WORLD_HUMAN_STAND_MOBILE", 0, true)
+    elseif initialActivity == "phone" then
+        TaskStartScenarioInPlace(currentPed, "WORLD_HUMAN_STAND_MOBILE", 0, true)
+    elseif initialActivity == "smoke" then
+        TaskStartScenarioInPlace(currentPed, "WORLD_HUMAN_SMOKING", 0, true)
+    end
+
+    if Config.Debug then
+        print("[qrp-multicharacter] Starting camera transition...")
+    end
+
+    -- Kamera animasyonu (cinematic gibi ama karakter hareket etmiyor)
+    SmoothCameraTransitionStatic(location)
 end
 
 function UpdatePedAppearance(appearance)
@@ -705,6 +932,106 @@ function TransitionToCharacter(citizenid, appearance, fromSky)
     SmoothCameraTransition(location, fromSky)
 end
 
+function SmoothCameraTransitionStatic(pedLocation)
+    local config = Config.Camera.cinematic
+    local staticConfig = Config.Camera.static
+    local idleCam = config.camera.idle
+    local transitionDuration = 2000
+
+    Citizen.Wait(100)
+    local forwardVector = GetEntityForwardVector(currentPed)
+
+    local followCam = config.camera.follow
+    local targetCamX = pedLocation.x + forwardVector.x * followCam.offset.y
+    local targetCamY = pedLocation.y + forwardVector.y * followCam.offset.y
+    local targetCamZ = pedLocation.z + followCam.offset.z + 0.5
+
+    local midpointX = pedLocation.x
+    local midpointY = pedLocation.y
+    local midpointZ = pedLocation.z + 100.0
+
+    CreateThread(function()
+        if Config.Debug then
+            print("[qrp-multicharacter] Camera descending from sky...")
+        end
+
+        local currentCamPos = GetCamCoord(cam)
+
+        RequestCollisionAtCoord(pedLocation.x, pedLocation.y, pedLocation.z)
+        SetFocusArea(pedLocation.x, pedLocation.y, pedLocation.z, 0.0, 0.0, 0.0)
+
+        local collisionTimeout = GetGameTimer() + 3000
+        while GetGameTimer() < collisionTimeout do
+            if HasCollisionLoadedAroundEntity(currentPed) then
+                break
+            end
+            RequestCollisionAtCoord(pedLocation.x, pedLocation.y, pedLocation.z)
+            Citizen.Wait(0)
+        end
+
+        if Config.Debug then
+            print("[qrp-multicharacter] Collision loaded, starting camera movement")
+        end
+
+        local startTime = GetGameTimer()
+
+        -- Yatay hareket - FOV'u da daraltmaya başla
+        local horizontalDuration = transitionDuration * 0.4
+        local idleCam = Config.Camera.cinematic.camera.idle
+        while GetGameTimer() - startTime < horizontalDuration do
+            local elapsed = GetGameTimer() - startTime
+            local progress = math.min(elapsed / horizontalDuration, 1.0)
+            local easeProgress = progress < 0.5 and 2 * progress * progress or 1 - math.pow(-2 * progress + 2, 2) / 2
+
+            local camX = currentCamPos.x + (midpointX - currentCamPos.x) * easeProgress
+            local camY = currentCamPos.y + (midpointY - currentCamPos.y) * easeProgress
+            local camZ = midpointZ
+
+            -- FOV geçişi: idle.fov'dan staticConfig.fov'a
+            local fov = idleCam.fov + (staticConfig.fov - idleCam.fov) * easeProgress
+
+            SetCamCoord(cam, camX, camY, camZ)
+            PointCamAtCoord(cam, pedLocation.x, pedLocation.y, pedLocation.z + 0.5)
+            SetCamFov(cam, fov)
+
+            Citizen.Wait(0)
+        end
+
+        -- İnme hareketi
+        local descendStart = GetGameTimer()
+        local descendDuration = transitionDuration * 0.6
+        while GetGameTimer() - descendStart < descendDuration do
+            local elapsed = GetGameTimer() - descendStart
+            local progress = math.min(elapsed / descendDuration, 1.0)
+            local easeProgress = 1 - math.pow(1 - progress, 3)
+
+            local camX = midpointX + (targetCamX - midpointX) * easeProgress
+            local camY = midpointY + (targetCamY - midpointY) * easeProgress
+            local camZ = midpointZ + (targetCamZ - midpointZ) * easeProgress
+
+            SetCamCoord(cam, camX, camY, camZ)
+            PointCamAtCoord(cam, pedLocation.x, pedLocation.y, pedLocation.z + 0.5)
+
+            local fov = (staticConfig.fov or 50.0) + (followCam.fov - (staticConfig.fov or 50.0)) * easeProgress
+            SetCamFov(cam, fov)
+
+            Citizen.Wait(0)
+        end
+
+        SetCamCoord(cam, targetCamX, targetCamY, targetCamZ)
+        PointCamAtCoord(cam, pedLocation.x, pedLocation.y, pedLocation.z + 0.5)
+        SetCamFov(cam, followCam.fov)
+
+        isTransitioning = false
+
+        Citizen.Wait(500)
+
+        if Config.Debug then
+            print("[qrp-multicharacter] Static camera transition complete!")
+        end
+    end)
+end
+
 function SmoothCameraTransition(pedLocation, fromSky)
     local config = Config.Camera.cinematic
     local idleCam = config.camera.idle
@@ -952,10 +1279,7 @@ function DestroyCamera()
         cam = nil
     end
 
-    local mode = Config.Camera.mode
-    if mode == "static" and Config.Camera.static.enableBlur then
-        TriggerScreenblurFadeOut(500)
-    end
+    TriggerScreenblurFadeOut(0)
 
     local ped = PlayerPedId()
     SetEntityVisible(ped, true, false)
@@ -1132,7 +1456,6 @@ RegisterNetEvent('qrp-multicharacter:client:transitionToSpawnSelector', function
         }
     })
 
-    -- Sadece bir kere fade in yap (en son olarak)
     Wait(100)
     DoScreenFadeIn(500)
 end)
@@ -1197,6 +1520,9 @@ AddEventHandler('onResourceStop', function(resourceName)
     if inCharSelection then
         CloseCharacterSelection()
     end
+
+    -- Blur temizle
+    TriggerScreenblurFadeOut(0)
 end)
 
 

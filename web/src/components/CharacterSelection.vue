@@ -13,10 +13,72 @@ const props = defineProps({
   }
 })
 
-const selectedSlot = ref(-1) 
+const selectedSlot = ref(-1)
 const showCreation = ref(false)
 const showNationalityDropdown = ref(false)
 const isTransitioning = ref(false)
+const currentLanguage = ref('en')
+
+const translations = {
+  en: {
+    selectCharacter: 'SELECT A CHARACTER',
+    chooseSlot: 'Choose a slot to continue',
+    createCharacter: 'CREATE CHARACTER',
+    fillDetails: 'Fill in the details below',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    birthDate: 'Birth Date',
+    nationality: 'Nationality',
+    gender: 'Gender',
+    male: 'Male',
+    female: 'Female',
+    create: 'CREATE',
+    play: 'PLAY',
+    emptySlot: 'EMPTY SLOT',
+    createNew: 'Create new character',
+    personalInfo: 'Personal Information',
+    careerStats: 'Career & Statistics',
+    currentJob: 'Current Job',
+    playTime: 'Play Time',
+    bankBalance: 'Bank Balance',
+    phoneNumber: 'Phone Number',
+    unemployed: 'Unemployed',
+    noPosition: 'No Position',
+    enterFirstName: 'Enter first name',
+    enterLastName: 'Enter last name'
+  },
+  tr: {
+    selectCharacter: 'BİR KARAKTER SEÇİN',
+    chooseSlot: 'Devam etmek için bir slot seçin',
+    createCharacter: 'KARAKTER OLUŞTUR',
+    fillDetails: 'Aşağıdaki bilgileri doldurun',
+    firstName: 'Ad',
+    lastName: 'Soyad',
+    birthDate: 'Doğum Tarihi',
+    nationality: 'Uyruk',
+    gender: 'Cinsiyet',
+    male: 'Erkek',
+    female: 'Kadın',
+    create: 'OLUŞTUR',
+    play: 'OYNA',
+    emptySlot: 'BOŞ SLOT',
+    createNew: 'Yeni karakter oluştur',
+    personalInfo: 'Kişisel Bilgiler',
+    careerStats: 'Kariyer & İstatistikler',
+    currentJob: 'Mevcut İş',
+    playTime: 'Oyun Süresi',
+    bankBalance: 'Banka Bakiyesi',
+    phoneNumber: 'Telefon Numarası',
+    unemployed: 'İşsiz',
+    noPosition: 'Pozisyon Yok',
+    enterFirstName: 'Adınızı girin',
+    enterLastName: 'Soyadınızı girin'
+  }
+}
+
+const t = computed(() => (key) => {
+  return translations[currentLanguage.value][key] || key
+})
 
 const formData = ref({
   firstname: '',
@@ -26,10 +88,14 @@ const formData = ref({
   gender: 0
 })
 
-const genderOptions = [
-  { label: 'Male', value: 0 },
-  { label: 'Female', value: 1 }
-]
+const genderOptions = computed(() => [
+  { label: t.value('male'), value: 0 },
+  { label: t.value('female'), value: 1 }
+])
+
+const toggleLanguage = () => {
+  currentLanguage.value = currentLanguage.value === 'en' ? 'tr' : 'en'
+}
 
 const nationalityOptions = [
   'USA', 'UK', 'Germany', 'France', 'Italy', 'Spain',
@@ -90,6 +156,25 @@ const money = computed(() => {
 const phoneNumber = computed(() => {
   if (!charInfo.value?.phone) return 'Not Assigned'
   return charInfo.value.phone
+})
+
+const playTime = computed(() => {
+  const metadata = currentCharacter.value?.character?.metadata
+  if (!metadata) return '0 Hours 0 Min'
+
+  try {
+    const meta = typeof metadata === 'string' ? JSON.parse(metadata) : metadata
+    const totalMinutes = meta?.playtime || 0
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+
+    if (currentLanguage.value === 'tr') {
+      return `${hours} Saat ${minutes} Dakika`
+    }
+    return `${hours} Hours ${minutes} Min`
+  } catch {
+    return currentLanguage.value === 'tr' ? '0 Saat 0 Dakika' : '0 Hours 0 Min'
+  }
 })
 
 const fullName = computed(() => {
@@ -222,35 +307,35 @@ onUnmounted(() => {
     <div class="left-panel">
       <Transition name="fade-slide" mode="out-in">
         <div v-if="!currentCharacter" class="empty-slot-info" key="no-selection">
-          <h1 class="character-name">SELECT A CHARACTER</h1>
-          <p class="citizen-id">Choose a slot to continue</p>
+          <h1 class="character-name">{{ t('selectCharacter') }}</h1>
+          <p class="citizen-id">{{ t('chooseSlot') }}</p>
         </div>
         <div v-else-if="currentCharacter.isEmpty && showCreation" class="character-creation-form" key="creation">
-          <h1 class="form-title">CREATE CHARACTER</h1>
-          <p class="form-subtitle">Fill in the details below</p>
+          <h1 class="form-title">{{ t('createCharacter') }}</h1>
+          <p class="form-subtitle">{{ t('fillDetails') }}</p>
 
         <div class="form-inputs">
           <div class="input-group">
-            <label>First Name</label>
+            <label>{{ t('firstName') }}</label>
             <input
               v-model="formData.firstname"
               type="text"
-              placeholder="Enter first name"
+              :placeholder="t('enterFirstName')"
               maxlength="50"
             />
           </div>
           <div class="input-group">
-            <label>Last Name</label>
+            <label>{{ t('lastName') }}</label>
             <input
               v-model="formData.lastname"
               type="text"
-              placeholder="Enter last name"
+              :placeholder="t('enterLastName')"
               maxlength="50"
             />
           </div>
 
           <div class="input-group">
-            <label>Birth Date</label>
+            <label>{{ t('birthDate') }}</label>
             <input
               v-model="formData.birthdate"
               type="date"
@@ -260,7 +345,7 @@ onUnmounted(() => {
           </div>
 
           <div class="input-group">
-            <label>Nationality</label>
+            <label>{{ t('nationality') }}</label>
             <div class="custom-select" @click="toggleNationalityDropdown">
               <div class="selected-value">{{ formData.nationality }}</div>
               <div v-if="showNationalityDropdown" class="dropdown-options">
@@ -278,7 +363,7 @@ onUnmounted(() => {
           </div>
 
           <div class="input-group">
-            <label>Gender</label>
+            <label>{{ t('gender') }}</label>
             <div class="gender-buttons">
               <button
                 v-for="option in genderOptions"
@@ -294,94 +379,127 @@ onUnmounted(() => {
         </div>
 
         <div v-else-if="!currentCharacter.isEmpty" class="character-info" key="info">
-          <h1 class="character-name">{{ fullName }}</h1>
-          <p class="citizen-id">CITIZEN ID</p>
-
-        <div class="info-grid">
-          <div class="info-item">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Nationality</span>
-              <span class="info-value">{{ charInfo?.nationality || 'USA' }}</span>
+          <!-- Header Section -->
+          <div class="info-header">
+            <div class="header-content">
+              <h1 class="character-name">{{ fullName }}</h1>
+              <div class="citizen-badge">
+                <svg class="badge-icon" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+                </svg>
+                <span class="citizen-id">{{ currentCharacter.character.citizenid || 'CID12345' }}</span>
+              </div>
             </div>
           </div>
 
-          <div class="info-item">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Birth Date</span>
-              <span class="info-value">{{ charInfo?.birthdate || '1990-01-01' }}</span>
-            </div>
-          </div>
+          <!-- Info Cards Grid -->
+          <div class="info-cards">
+            <!-- Personal Info Section -->
+            <div class="info-section">
+              <div class="section-title">
+                <div class="title-line"></div>
+                <span>{{ t('personalInfo') }}</span>
+              </div>
 
-          <div class="info-item">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Job</span>
-              <span class="info-value">{{ job?.label || 'POLICE' }}</span>
-              <span class="info-subtext">{{ job?.grade?.name || 'Officer' }}</span>
-            </div>
-          </div>
+              <div class="info-card">
+                <div class="card-icon nationality">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('nationality') }}</span>
+                  <span class="card-value">{{ charInfo?.nationality || 'USA' }}</span>
+                </div>
+              </div>
 
-          <div class="info-item">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Played Time</span>
-              <span class="info-value">31 HOURS 31 MINUTES</span>
-            </div>
-          </div>
+              <div class="info-card">
+                <div class="card-icon birthdate">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('birthDate') }}</span>
+                  <span class="card-value">{{ charInfo?.birthdate || '1990-01-01' }}</span>
+                </div>
+              </div>
 
+              <div class="info-card">
+                <div class="card-icon phone">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('phoneNumber') }}</span>
+                  <span class="card-value">{{ phoneNumber }}</span>
+                </div>
+              </div>
+            </div>
 
+            <!-- Job & Stats Section -->
+            <div class="info-section">
+              <div class="section-title">
+                <div class="title-line"></div>
+                <span>{{ t('careerStats') }}</span>
+              </div>
 
-          <div class="info-item info-item-wide">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Bank</span>
-              <span class="info-value money-value">{{ formatMoney(money?.bank || 0) }}</span>
-            </div>
-          </div>
+              <div class="info-card featured">
+                <div class="card-icon job">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('currentJob') }}</span>
+                  <span class="card-value">{{ job?.label || t('unemployed') }}</span>
+                  <span class="card-subtext">{{ job?.grade?.name || t('noPosition') }}</span>
+                </div>
+              </div>
 
-          <div class="info-item info-item-wide">
-            <div class="info-icon-wrapper">
-              <svg class="info-icon-svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-              </svg>
-            </div>
-            <div class="info-content">
-              <span class="info-label">Phone Number</span>
-              <span class="info-value">{{ phoneNumber }}</span>
-            </div>
+              <div class="info-card">
+                <div class="card-icon time">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('playTime') }}</span>
+                  <span class="card-value">{{ playTime }}</span>
+                </div>
+              </div>
+
+              <div class="info-card money-card">
+                <div class="card-icon bank">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                    <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="card-content">
+                  <span class="card-label">{{ t('bankBalance') }}</span>
+                  <span class="card-value money-value">{{ formatMoney(money?.bank || 0) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div v-else class="empty-slot-info" key="empty">
-          <h1 class="character-name">EMPTY SLOT</h1>
-          <p class="citizen-id">Create new character</p>
+          <h1 class="character-name">{{ t('emptySlot') }}</h1>
+          <p class="citizen-id">{{ t('createNew') }}</p>
         </div>
       </Transition>
     </div>
+
+    <!-- Language Toggle Button -->
+    <button class="language-toggle" @click="toggleLanguage">
+      <svg fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98a1 1 0 11-1.79.895L15.383 16h-4.764l-.723 1.447a1 1 0 11-1.788-.894l.99-1.98.019-.038 2.99-5.982A1 1 0 0113 8zm-1.382 6h2.764L13 11.236 11.618 14z" clip-rule="evenodd"/>
+      </svg>
+      <span>{{ currentLanguage.toUpperCase() }}</span>
+    </button>
 
     <div class="character-display">
     </div>
@@ -394,10 +512,10 @@ onUnmounted(() => {
         :disabled="!isFormValid"
         @click="handleCreateCharacter"
       >
-        <span>CREATE</span>
+        <span>{{ t('create') }}</span>
       </button>
       <button v-else-if="currentCharacter && !currentCharacter.isEmpty" class="btn-play" @click="handlePlay">
-        <span>PLAY</span>
+        <span>{{ t('play') }}</span>
       </button>
 
       <div class="slot-buttons">
@@ -635,70 +753,154 @@ onUnmounted(() => {
   text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+/* Info Header Styles */
+.info-header {
+  margin-bottom: 30px;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.citizen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  padding: 0;
+  border: none;
+  width: fit-content;
+}
+
+.badge-icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  display: none;
+}
+
 .citizen-id {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 30px 0;
   letter-spacing: 2px;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-.info-item-wide {
-  grid-column: span 1;
-}
-
-.info-item {
+/* Info Cards Container */
+.info-cards {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Section Styles */
+.info-section {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  background: rgba(20, 25, 30, 0.6);
-  padding: 18px 15px;
-  border-radius: 8px;
-  border: 1px solid rgba(60, 65, 70, 0.4);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding-left: 4px;
+}
+
+.title-line {
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+}
+
+.section-title span {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* Info Card Styles */
+.info-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(11, 15, 20, 0.85);
+  padding: 16px 14px;
+  border-radius: 12px 0 12px 0;
+  border: 2px solid rgba(60, 65, 70, 0.5);
   transition: all 0.3s ease;
-  cursor: default;
-  min-height: 80px;
+  position: relative;
+  overflow: hidden;
 }
 
-.info-item:hover {
-  background: rgba(25, 30, 35, 0.8);
-  border-color: rgba(80, 85, 90, 0.6);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.info-card:hover {
+  background: rgba(20, 25, 30, 0.95);
+  border-color: rgba(80, 85, 90, 0.7);
+  transform: translateX(2px);
 }
 
-.info-icon-wrapper {
+/* Featured Card (Job Card) */
+.info-card.featured {
+  background: rgba(11, 15, 20, 0.9);
+  border: 2px solid rgba(60, 65, 70, 0.6);
+  padding: 18px 14px;
+}
+
+.info-card.featured:hover {
+  background: rgba(20, 25, 30, 1);
+  border-color: rgba(80, 85, 90, 0.8);
+}
+
+/* Money Card */
+.info-card.money-card {
+  background: rgba(11, 15, 20, 0.85);
+  border: 2px solid rgba(60, 65, 70, 0.5);
+}
+
+.info-card.money-card:hover {
+  background: rgba(20, 25, 30, 0.95);
+  border-color: rgba(80, 85, 90, 0.7);
+}
+
+/* Card Icon Styles */
+.card-icon {
   width: 36px;
   height: 36px;
   min-width: 36px;
-  background: rgba(11, 15, 20, 0.8);
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.info-icon-svg {
-  width: 20px;
-  height: 20px;
+  background: rgba(11, 15, 20, 0.8);
+  border-radius: 6px;
+  position: relative;
+  transition: all 0.3s ease;
   color: rgba(255, 255, 255, 0.7);
 }
 
-.info-content {
+.card-icon svg {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Card Content */
+.card-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
-.info-label {
+.card-label {
   font-size: 11px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
@@ -706,22 +908,24 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
 }
 
-.info-value {
+.card-value {
   font-size: 13px;
   font-weight: 600;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.3px;
 }
 
 .money-value {
-  color: #4ade80;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
   font-weight: 700;
-  text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+  letter-spacing: 0.3px;
 }
 
-.info-subtext {
+.card-subtext {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
   text-transform: capitalize;
 }
 
@@ -755,6 +959,42 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
   max-width: 280px;
+}
+
+/* Language Toggle Button */
+.language-toggle {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(11, 15, 20, 0.85);
+  padding: 12px 18px;
+  border-radius: 12px 0 12px 0;
+  border: 2px solid rgba(60, 65, 70, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.language-toggle svg {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.language-toggle span {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 1px;
+}
+
+.language-toggle:hover {
+  background: rgba(20, 25, 30, 0.95);
+  border-color: rgba(80, 85, 90, 0.7);
+  transform: translateY(-2px);
 }
 
 .character-display {
