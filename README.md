@@ -1,39 +1,39 @@
 # qrp-multicharacter
 
-QBCore için çoklu karakter seçim ve oluşturma ekranı. Oyuncu sunucuya girdiğinde karakterlerini listeler, seçilen karakteri kamera önünde kıyafetiyle gösterir, yeni karakter oluşturmayı ve doğma noktası seçmeyi sağlar. Arayüz Vue 3 + Vite + Tailwind CSS ile yazılmıştır.
+A multicharacter selection and creation screen for QBCore. When a player joins the server, it lists their characters, shows the selected character in front of the camera wearing its outfit, and lets them create a new character and choose a spawn point. The UI is written with Vue 3 + Vite + Tailwind CSS.
 
-Sürüm: `1.0.0` (`fxmanifest.lua`).
+Version: `1.0.0` (`fxmanifest.lua`).
 
-## Özellikler
+## Features
 
-- Karakter slotları (`Config.MaxCharacters`, varsayılan 4). Dolu slotta karakterin adı, işi, oyun süresi, banka bakiyesi ve telefon numarası gösterilir.
-- Yeni karakter formu: ad, soyad, doğum tarihi, uyruk (12 seçenekli liste) ve cinsiyet.
-- Seçilen karakter kayıtlı görünümüyle (`playerskins` tablosu) oluşturulup bir animasyonla kameraya gösterilir.
-- İki kamera modu: `static` ve `cinematic` (aşağıya bakın).
-- İsteğe bağlı portre modu: kamerada alan derinliği (DOF) bulanıklığı.
-- Karakter seçildikten sonra doğma noktası seçici. Karakterin kayıtlı son konumu varsa listenin başına "Last Location" olarak eklenir. Konumlar arasında `←` / `→` ile geçilir, `Enter` ile doğulur.
-- Yeni karakter oluşturulunca görünüm/kıyafet menüsü açılabilir (`qb-clothing`, `illenium-appearance`, `fivem-appearance`).
-- Arayüz İngilizce ve Türkçe. Başlangıç dili `Config.UI.defaultLanguage` ile seçilir, ekrandaki dil düğmesiyle değiştirilir.
-- İsteğe bağlı karakter silme düğmesi (`Config.DeleteCharacter`).
+- Character slots (`Config.MaxCharacters`, default 4). An occupied slot shows the character's name, job, playtime, bank balance and phone number.
+- New character form: first name, last name, date of birth, nationality (a list of 12 options) and gender.
+- The selected character is spawned with its saved appearance (`playerskins` table) and shown to the camera with an animation.
+- Two camera modes: `static` and `cinematic` (see below).
+- Optional portrait mode: depth of field (DOF) blur on the camera.
+- Spawn point selector after a character is chosen. If the character has a saved last position, it is added to the top of the list as "Last Location". Switch between locations with `←` / `→` and spawn with `Enter`.
+- When a new character is created, the appearance/clothing menu can be opened (`qb-clothing`, `illenium-appearance`, `fivem-appearance`).
+- The UI is in English and Turkish. The initial language is set with `Config.UI.defaultLanguage` and can be changed with the language button on screen.
+- Optional character delete button (`Config.DeleteCharacter`).
 
-## Gereksinimler
+## Requirements
 
 - `qb-core`
 - `oxmysql`
-- Görünüm scripti: `qb-clothing`, `illenium-appearance` veya `fivem-appearance`
-- Arayüzü derlemek için Node.js ve npm
+- Appearance script: `qb-clothing`, `illenium-appearance` or `fivem-appearance`
+- Node.js and npm to build the UI
 
-Script, QBCore'un `players` tablosunu ve görünüm scriptinin `playerskins` tablosunu kullanır. Kendine ait bir SQL dosyası yoktur.
+The script uses QBCore's `players` table and the appearance script's `playerskins` table. It has no SQL file of its own.
 
-## Kurulum
+## Installation
 
-1. Repoyu `resources` klasörüne klonlayın:
+1. Clone the repo into your `resources` folder:
 
    ```bash
    git clone https://github.com/Burqk1/qrp-multicharacter.git
    ```
 
-2. Arayüzü derleyin. Derleme çıktısı (`html/`) git'e dahil değil; `fxmanifest.lua` arayüzü `html/index.html` üzerinden yükler:
+2. Build the UI. The build output (`html/`) is not included in git; `fxmanifest.lua` loads the UI from `html/index.html`:
 
    ```bash
    cd qrp-multicharacter/web
@@ -41,9 +41,9 @@ Script, QBCore'un `players` tablosunu ve görünüm scriptinin `playerskins` tab
    npm run build
    ```
 
-   `vite.config.js` çıktıyı bir üst klasördeki `html/` dizinine yazar.
+   `vite.config.js` writes the output to the `html/` directory one level up.
 
-3. `server.cfg` dosyasında bağımlılıklardan sonra başlatın:
+3. Start it in `server.cfg` after its dependencies:
 
    ```cfg
    ensure oxmysql
@@ -52,70 +52,70 @@ Script, QBCore'un `players` tablosunu ve görünüm scriptinin `playerskins` tab
    ensure qrp-multicharacter
    ```
 
-4. Bu resource karakter ekranını kendisi açar (oturum başlayınca `qrp-multicharacter:server:requestCharacters` tetiklenir). Aynı işi yapan başka bir multicharacter scriptiyle (ör. `qb-multicharacter`) birlikte çalıştırmayın.
+4. This resource opens the character screen by itself (`qrp-multicharacter:server:requestCharacters` is triggered when the session starts). Don't run it alongside another multicharacter script that does the same job (e.g. `qb-multicharacter`).
 
-## Yapılandırma (`config.lua`)
+## Configuration (`config.lua`)
 
-### Genel
+### General
 
-| Anahtar | Varsayılan | Açıklama |
+| Key | Default | Description |
 |---|---|---|
-| `Config.MaxCharacters` | `4` | Gösterilen slot sayısı |
-| `Config.StartingMoney` | `cash = 500`, `bank = 5000` | Yeni karakterin başlangıç parası. Tablo silinirse QBCore'un `QBConfig.Money.MoneyTypes` değerleri kullanılır. |
-| `Config.StartingItems` | `{}` | Yeni karaktere verilecek eşyalar, `{ item = 'ad', amount = 1 }` biçiminde. `id_card` için kimlik bilgileri otomatik doldurulur. Boşsa script eşya vermez. |
-| `Config.DefaultSpawn` | Havaalanı | `qrp-multicharacter:client:spawnPlayer` olayında doğma noktası verilmezse kullanılır |
-| `Config.SpawnLocations` | 4 konum | Doğma seçicideki konumlar: `name`, `coords` (`vector4`), `icon` |
-| `Config.Debug` | `false` | Konsola ayrıntılı log basar |
+| `Config.MaxCharacters` | `4` | Number of slots shown |
+| `Config.StartingMoney` | `cash = 500`, `bank = 5000` | Starting money for a new character. If the table is removed, QBCore's `QBConfig.Money.MoneyTypes` values are used. |
+| `Config.StartingItems` | `{}` | Items given to a new character, in the form `{ item = 'ad', amount = 1 }`. For `id_card`, the ID info is filled in automatically. If empty, the script gives no items. |
+| `Config.DefaultSpawn` | Airport | Used when no spawn point is given in the `qrp-multicharacter:client:spawnPlayer` event |
+| `Config.SpawnLocations` | 4 locations | Locations in the spawn selector: `name`, `coords` (`vector4`), `icon` |
+| `Config.Debug` | `false` | Prints detailed logs to the console |
 
-### Arayüz (`Config.UI`)
+### UI (`Config.UI`)
 
-| Anahtar | Varsayılan | Açıklama |
+| Key | Default | Description |
 |---|---|---|
-| `enableEscapeKey` | `true` | `false` ise `Esc` tuşu arayüzü kapatmaz |
-| `defaultLanguage` | `"en"` | Arayüzün açılış dili: `"en"` veya `"tr"` |
+| `enableEscapeKey` | `true` | If `false`, the `Esc` key doesn't close the UI |
+| `defaultLanguage` | `"en"` | Initial UI language: `"en"` or `"tr"` |
 
-### Karakter silme (`Config.DeleteCharacter`)
+### Character deletion (`Config.DeleteCharacter`)
 
-| Anahtar | Varsayılan | Açıklama |
+| Key | Default | Description |
 |---|---|---|
-| `enabled` | `true` | Dolu slotta "Sil" düğmesini gösterir. `false` ise düğme gizlenir; client NUI callback'i ve sunucudaki `deleteCharacter` olayı da isteği reddeder. |
-| `requireConfirmation` | `true` | `true` ise düğmeye ilk basışta "Silmeyi onayla" yazar, karakter ikinci basışta silinir |
+| `enabled` | `true` | Shows the "Sil" ("Delete") button on an occupied slot. If `false`, the button is hidden, and the client NUI callback and the server's `deleteCharacter` event also reject the request. |
+| `requireConfirmation` | `true` | If `true`, the first press shows "Silmeyi onayla" ("Confirm delete") on the button, and the character is deleted on the second press |
 
-### Kamera (`Config.Camera`)
+### Camera (`Config.Camera`)
 
-`mode` değeri `"static"` veya `"cinematic"` olabilir.
+The `mode` value can be `"static"` or `"cinematic"`.
 
-- **static** (varsayılan): Kamera önce `cinematic.camera.idle` konumundan şehre bakar. Bir karakter seçilince ped, `cinematic.randomLocations` içinden rastgele bir noktada oluşturulur ve kamera ona yaklaşır.
-- **cinematic**: Yalnızca `cinematic.useRPC = true` iken etkinleşir. Karakter seçilen noktada yürür veya bir aktivite yapar, kamera onu takip eder.
+- **static** (default): The camera first looks at the city from the `cinematic.camera.idle` position. When a character is selected, the ped is spawned at a random point from `cinematic.randomLocations` and the camera moves in on it.
+- **cinematic**: Only takes effect when `cinematic.useRPC = true`. The character walks or does an activity at the selected point, and the camera follows it.
 
-Kullanılan alanlar:
+Fields used:
 
-| Anahtar | Açıklama |
+| Key | Description |
 |---|---|
-| `static.fov` | Karaktere yaklaşırken kameranın FOV'u |
-| `static.portraitMode` | `true` ise DOF bulanıklığı açılır |
-| `cinematic.useRPC` | `cinematic` modunun açılması için `true` olmalı |
-| `cinematic.useBucket` | `cinematic` modda oyuncuyu seçim sırasında ayrı bir routing bucket'a alır (popülasyon kapalı) |
-| `cinematic.bucketId` | Bu bucket'ın ID'si (varsayılan `999999`) |
-| `cinematic.walkAnimation` | Yürüme animasyon seti |
-| `cinematic.randomLocations` | Pedin oluşturulacağı noktalar (`vector4` listesi). Her iki mod da bunu kullanır. |
+| `static.fov` | Camera FOV when moving in on the character |
+| `static.portraitMode` | If `true`, DOF blur is enabled |
+| `cinematic.useRPC` | Must be `true` for `cinematic` mode to be enabled |
+| `cinematic.useBucket` | In `cinematic` mode, moves the player to a separate routing bucket during selection (population disabled) |
+| `cinematic.bucketId` | ID of that bucket (default `999999`) |
+| `cinematic.walkAnimation` | Walk animation set |
+| `cinematic.randomLocations` | Points where the ped is spawned (list of `vector4`). Both modes use this. |
 | `cinematic.initialActivities` | `wander`, `stand`, `phone`, `smoke` |
-| `cinematic.camera.idle` | Gökyüzü/şehir görünümü: `coords`, `pointAt`, `fov` |
-| `cinematic.camera.follow` | Takip kamerası: `offset`, `fov` |
-| `cinematic.camera.transition.duration` | Gökyüzünden karaktere geçiş süresi (ms) |
+| `cinematic.camera.idle` | Sky/city view: `coords`, `pointAt`, `fov` |
+| `cinematic.camera.follow` | Follow camera: `offset`, `fov` |
+| `cinematic.camera.transition.duration` | Transition time from the sky to the character (ms) |
 
-### Görünüm (`Config.Appearance`)
+### Appearance (`Config.Appearance`)
 
-| Anahtar | Varsayılan | Açıklama |
+| Key | Default | Description |
 |---|---|---|
-| `script` | `"qb-clothing"` | `qb-clothing`, `illenium-appearance` veya `fivem-appearance` |
-| `openOnCreate` | `true` | Yeni karakter oluşturulunca görünüm menüsünü açar |
+| `script` | `"qb-clothing"` | `qb-clothing`, `illenium-appearance` or `fivem-appearance` |
+| `openOnCreate` | `true` | Opens the appearance menu when a new character is created |
 
-## Karakter silme
+## Character deletion
 
-Arayüzdeki "Sil" düğmesi `deleteCharacter` NUI callback'ini, o da `qrp-multicharacter:server:deleteCharacter` olayını çağırır. Sunucu, `Config.DeleteCharacter.enabled` açıksa ve karakter oyuncunun lisansına aitse `QBCore.Player.DeleteCharacter` çağırır, ardından güncel karakter listesini arayüze geri gönderir. Sunucu tarafındaki `DeleteCharacter` export'u bu ayardan etkilenmez. Düğme kaynak kodda (`web/src/components/CharacterSelection.vue`) eklendi; etkili olması için arayüzü yeniden derleyin (`npm run build`).
+The "Sil" ("Delete") button in the UI calls the `deleteCharacter` NUI callback, which in turn calls the `qrp-multicharacter:server:deleteCharacter` event. If `Config.DeleteCharacter.enabled` is on and the character belongs to the player's license, the server calls `QBCore.Player.DeleteCharacter` and then sends the updated character list back to the UI. The server-side `DeleteCharacter` export is not affected by this setting. The button was added in the source code (`web/src/components/CharacterSelection.vue`); rebuild the UI (`npm run build`) for it to take effect.
 
-## Exportlar
+## Exports
 
 Client:
 
@@ -132,17 +132,17 @@ exports['qrp-multicharacter']:SelectCharacter(source, citizenid)  -- lisans kont
 exports['qrp-multicharacter']:DeleteCharacter(source, citizenid)  -- lisans kontrolü + QBCore.Player.DeleteCharacter
 ```
 
-## Olaylar
+## Events
 
-Server (client'tan tetiklenir):
+Server (triggered from the client):
 
 - `qrp-multicharacter:server:requestCharacters`
 - `qrp-multicharacter:server:selectCharacter` (`citizenid`)
-- `qrp-multicharacter:server:createCharacter` (form verisi)
+- `qrp-multicharacter:server:createCharacter` (form data)
 - `qrp-multicharacter:server:deleteCharacter` (`citizenid`)
 - QBCore callback: `qrp-multicharacter:server:getAppearance` (`citizenid`)
 
-Client (server'dan tetiklenir):
+Client (triggered from the server):
 
 - `qrp-multicharacter:client:openCharacterSelection`
 - `qrp-multicharacter:client:closeNUI`
@@ -151,11 +151,11 @@ Client (server'dan tetiklenir):
 - `qrp-multicharacter:client:characterDeleted`
 - `qrp-multicharacter:client:spawnPlayer`
 
-Oyuncu doğduğunda `QBCore:Server:OnPlayerLoaded` ve `QBCore:Client:OnPlayerLoaded` tetiklenir.
+When the player spawns, `QBCore:Server:OnPlayerLoaded` and `QBCore:Client:OnPlayerLoaded` are triggered.
 
-## Geliştirme
+## Development
 
-`web/package.json` scriptleri:
+`web/package.json` scripts:
 
 ```bash
 cd web
@@ -164,8 +164,8 @@ npm run build     # ../html/ klasörüne derleme
 npm run preview   # Derlenmiş çıktıyı önizleme
 ```
 
-`web/README.md` Vite'ın varsayılan şablon dosyasıdır; `web/src/components/HelloWorld.vue` de şablondan kalmadır. `HelloWorld.vue` ve `CharacterSlot.vue` hiçbir yerde import edilmiyor; ekranda kullanılan bileşenler `CharacterSelection.vue` ve `SpawnSelector.vue`.
+`web/README.md` is Vite's default template file, and `web/src/components/HelloWorld.vue` is also left over from the template. `HelloWorld.vue` and `CharacterSlot.vue` are not imported anywhere; the components used on screen are `CharacterSelection.vue` and `SpawnSelector.vue`.
 
-## Lisans
+## License
 
-Repoda bir LICENSE dosyası yok.
+There is no LICENSE file in the repo.
