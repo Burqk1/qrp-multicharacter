@@ -327,19 +327,24 @@ RegisterNUICallback('changeSlot', function(data, cb)
 end)
 
 RegisterNUICallback('deleteCharacter', function(data, cb)
-    if not data.citizenid then
+    if not Config.DeleteCharacter.enabled or not data.citizenid then
         cb('error')
         return
-    end
-
-    if Config.DeleteCharacter.requireConfirmation then
-        -- TODO: Onay dialogu eklenebilir
     end
 
     TriggerServerEvent('qrp-multicharacter:server:deleteCharacter', data.citizenid)
 
     cb('ok')
 end)
+
+function GetUIOptions()
+    return {
+        deleteEnabled = Config.DeleteCharacter.enabled,
+        requireConfirmation = Config.DeleteCharacter.requireConfirmation,
+        enableEscapeKey = Config.UI.enableEscapeKey,
+        defaultLanguage = Config.UI.defaultLanguage
+    }
+end
 
 function OpenCharacterSelection(characters)
     if inCharSelection then return end
@@ -360,7 +365,8 @@ function OpenCharacterSelection(characters)
         action = 'openUI',
         data = {
             characters = charData,
-            maxCharacters = Config.MaxCharacters
+            maxCharacters = Config.MaxCharacters,
+            options = GetUIOptions()
         }
     })
 
@@ -1472,7 +1478,8 @@ RegisterNetEvent('qrp-multicharacter:client:characterDeleted', function(characte
         action = 'openUI',
         data = {
             characters = charData,
-            maxCharacters = Config.MaxCharacters
+            maxCharacters = Config.MaxCharacters,
+            options = GetUIOptions()
         }
     })
 end)

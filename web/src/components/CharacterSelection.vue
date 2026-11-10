@@ -10,6 +10,18 @@ const props = defineProps({
   maxCharacters: {
     type: Number,
     default: 4
+  },
+  deleteEnabled: {
+    type: Boolean,
+    default: false
+  },
+  requireConfirmation: {
+    type: Boolean,
+    default: true
+  },
+  defaultLanguage: {
+    type: String,
+    default: 'en'
   }
 })
 
@@ -17,7 +29,8 @@ const selectedSlot = ref(-1)
 const showCreation = ref(false)
 const showNationalityDropdown = ref(false)
 const isTransitioning = ref(false)
-const currentLanguage = ref('en')
+const currentLanguage = ref(props.defaultLanguage === 'tr' ? 'tr' : 'en')
+const confirmingDelete = ref(false)
 
 const translations = {
   en: {
@@ -34,6 +47,8 @@ const translations = {
     female: 'Female',
     create: 'CREATE',
     play: 'PLAY',
+    delete: 'DELETE',
+    confirmDelete: 'CONFIRM DELETE',
     emptySlot: 'EMPTY SLOT',
     createNew: 'Create new character',
     personalInfo: 'Personal Information',
@@ -61,6 +76,8 @@ const translations = {
     female: 'Kadın',
     create: 'OLUŞTUR',
     play: 'OYNA',
+    delete: 'SİL',
+    confirmDelete: 'SİLMEYİ ONAYLA',
     emptySlot: 'BOŞ SLOT',
     createNew: 'Yeni karakter oluştur',
     personalInfo: 'Kişisel Bilgiler',
@@ -192,6 +209,7 @@ const selectSlot = async (index) => {
 
   isTransitioning.value = true
 
+  confirmingDelete.value = false
   selectedSlot.value = index
   const slot = slots.value[index]
 
@@ -217,6 +235,21 @@ const handlePlay = async () => {
   } else {
     await fetchNui('selectCharacter', { citizenid: slot.character.citizenid })
   }
+}
+
+const handleDelete = async () => {
+  const slot = currentCharacter.value
+  if (!props.deleteEnabled || !slot || slot.isEmpty) return
+
+  if (props.requireConfirmation && !confirmingDelete.value) {
+    confirmingDelete.value = true
+    return
+  }
+
+  confirmingDelete.value = false
+  await fetchNui('deleteCharacter', { citizenid: slot.character.citizenid })
+  await fetchNui('changeSlot', { citizenid: null })
+  selectedSlot.value = -1
 }
 
 const handleCreateCharacter = async () => {
@@ -516,6 +549,13 @@ onUnmounted(() => {
       </button>
       <button v-else-if="currentCharacter && !currentCharacter.isEmpty" class="btn-play" @click="handlePlay">
         <span>{{ t('play') }}</span>
+      </button>
+      <button
+        v-if="deleteEnabled && currentCharacter && !currentCharacter.isEmpty"
+        class="btn-play btn-delete"
+        @click="handleDelete"
+      >
+        <span>{{ confirmingDelete ? t('confirmDelete') : t('delete') }}</span>
       </button>
 
       <div class="slot-buttons">
@@ -1107,6 +1147,14 @@ onUnmounted(() => {
 
 .btn-play:active {
   transform: scale(0.98);
+}
+
+.btn-delete {
+  border-color: rgba(150, 40, 40, 0.8);
+}
+
+.btn-delete:hover {
+  border-color: rgba(200, 50, 50, 1);
 }
 
 .btn-play.disabled {

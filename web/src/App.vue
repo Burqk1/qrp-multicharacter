@@ -10,6 +10,7 @@ const characters = ref([])
 const maxCharacters = ref(4)
 const spawnLocations = ref([])
 const lastLocation = ref(null)
+const uiOptions = ref({})
 
 const handleMessage = (event) => {
   const { action, data } = event.data
@@ -20,6 +21,7 @@ const handleMessage = (event) => {
       showSpawnSelector.value = false
       characters.value = data.characters || []
       maxCharacters.value = data.maxCharacters || 4
+      uiOptions.value = data.options || {}
       break
     case 'closeUI':
       isVisible.value = false
@@ -35,7 +37,7 @@ const handleMessage = (event) => {
 }
 
 const handleKeydown = (event) => {
-  if (event.key === 'Escape' && isVisible.value) {
+  if (event.key === 'Escape' && isVisible.value && uiOptions.value.enableEscapeKey !== false) {
     fetchNui('closeUI', {})
     isVisible.value = false
   }
@@ -87,6 +89,9 @@ onUnmounted(() => {
         v-else
         :characters="characters"
         :maxCharacters="maxCharacters"
+        :deleteEnabled="uiOptions.deleteEnabled === true"
+        :requireConfirmation="uiOptions.requireConfirmation !== false"
+        :defaultLanguage="uiOptions.defaultLanguage || 'en'"
         key="character"
       />
     </Transition>

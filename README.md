@@ -13,7 +13,8 @@ Sürüm: `1.0.0` (`fxmanifest.lua`).
 - İsteğe bağlı portre modu: kamerada alan derinliği (DOF) bulanıklığı.
 - Karakter seçildikten sonra doğma noktası seçici. Karakterin kayıtlı son konumu varsa listenin başına "Last Location" olarak eklenir. Konumlar arasında `←` / `→` ile geçilir, `Enter` ile doğulur.
 - Yeni karakter oluşturulunca görünüm/kıyafet menüsü açılabilir (`qb-clothing`, `illenium-appearance`, `fivem-appearance`).
-- Arayüz İngilizce ve Türkçe; ekrandaki dil düğmesiyle değiştirilir.
+- Arayüz İngilizce ve Türkçe. Başlangıç dili `Config.UI.defaultLanguage` ile seçilir, ekrandaki dil düğmesiyle değiştirilir.
+- İsteğe bağlı karakter silme düğmesi (`Config.DeleteCharacter`).
 
 ## Gereksinimler
 
@@ -60,10 +61,25 @@ Script, QBCore'un `players` tablosunu ve görünüm scriptinin `playerskins` tab
 | Anahtar | Varsayılan | Açıklama |
 |---|---|---|
 | `Config.MaxCharacters` | `4` | Gösterilen slot sayısı |
+| `Config.StartingMoney` | `cash = 500`, `bank = 5000` | Yeni karakterin başlangıç parası. Tablo silinirse QBCore'un `QBConfig.Money.MoneyTypes` değerleri kullanılır. |
 | `Config.StartingItems` | `{}` | Yeni karaktere verilecek eşyalar, `{ item = 'ad', amount = 1 }` biçiminde. `id_card` için kimlik bilgileri otomatik doldurulur. Boşsa script eşya vermez. |
 | `Config.DefaultSpawn` | Havaalanı | `qrp-multicharacter:client:spawnPlayer` olayında doğma noktası verilmezse kullanılır |
 | `Config.SpawnLocations` | 4 konum | Doğma seçicideki konumlar: `name`, `coords` (`vector4`), `icon` |
 | `Config.Debug` | `false` | Konsola ayrıntılı log basar |
+
+### Arayüz (`Config.UI`)
+
+| Anahtar | Varsayılan | Açıklama |
+|---|---|---|
+| `enableEscapeKey` | `true` | `false` ise `Esc` tuşu arayüzü kapatmaz |
+| `defaultLanguage` | `"en"` | Arayüzün açılış dili: `"en"` veya `"tr"` |
+
+### Karakter silme (`Config.DeleteCharacter`)
+
+| Anahtar | Varsayılan | Açıklama |
+|---|---|---|
+| `enabled` | `true` | Dolu slotta "Sil" düğmesini gösterir. `false` ise düğme gizlenir; client NUI callback'i ve sunucudaki `deleteCharacter` olayı da isteği reddeder. |
+| `requireConfirmation` | `true` | `true` ise düğmeye ilk basışta "Silmeyi onayla" yazar, karakter ikinci basışta silinir |
 
 ### Kamera (`Config.Camera`)
 
@@ -95,20 +111,9 @@ Kullanılan alanlar:
 | `script` | `"qb-clothing"` | `qb-clothing`, `illenium-appearance` veya `fivem-appearance` |
 | `openOnCreate` | `true` | Yeni karakter oluşturulunca görünüm menüsünü açar |
 
-### Şu an kodda kullanılmayan ayarlar
-
-Aşağıdaki anahtarlar `config.lua` içinde tanımlı ama `client/main.lua` veya `server/main.lua` tarafından okunmuyor. Değiştirmeniz bir şey değiştirmez:
-
-- `Config.StartingMoney`
-- `Config.PedModels`
-- `Config.UI` (`useMouse`, `enableEscapeKey`, `defaultLanguage`). Arayüz her zaman İngilizce başlar, dil düğmeyle değiştirilir.
-- `Config.DeleteCharacter.enabled`. `requireConfirmation` okunuyor ama içi boş (TODO).
-- `Config.Camera.cinematic.walkSpeed`, `camera.start`, `camera.transition.easeType`
-- `Config.Camera.static.coords`, `static.characterPosition`, `static.animations`
-
 ## Karakter silme
 
-Sunucuda `qrp-multicharacter:server:deleteCharacter` olayı ve `deleteCharacter` NUI callback'i var. Sunucu, karakterin oyuncunun lisansına ait olduğunu kontrol edip `QBCore.Player.DeleteCharacter` çağırıyor. Ancak mevcut Vue arayüzünde bu callback'i çağıran bir silme düğmesi yok.
+Arayüzdeki "Sil" düğmesi `deleteCharacter` NUI callback'ini, o da `qrp-multicharacter:server:deleteCharacter` olayını çağırır. Sunucu, `Config.DeleteCharacter.enabled` açıksa ve karakter oyuncunun lisansına aitse `QBCore.Player.DeleteCharacter` çağırır, ardından güncel karakter listesini arayüze geri gönderir. Sunucu tarafındaki `DeleteCharacter` export'u bu ayardan etkilenmez. Düğme kaynak kodda (`web/src/components/CharacterSelection.vue`) eklendi; etkili olması için arayüzü yeniden derleyin (`npm run build`).
 
 ## Exportlar
 

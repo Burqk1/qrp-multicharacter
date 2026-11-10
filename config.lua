@@ -16,7 +16,6 @@ Config.Camera = {
         useBucket = true, -- Oyuncuyu ayrı routing bucket'a at (diğer oyuncular görmesin)
         bucketId = 999999, -- Bucket ID (benzersiz olmalı)
         walkAnimation = "move_m@confident", -- Yürüme animasyonu
-        walkSpeed = 1.0, -- Yürüme hızı
 
         randomLocations = {
 
@@ -29,19 +28,12 @@ Config.Camera = {
                 pointAt = vector3(300.0, -200.0, 50.0), -- Şehir merkezine bak
                 fov = 70.0, -- Geniş açı
             },
-            start = {
-                coords = vector3(330.0, -225.0, 56.0), -- Uzak mesafe
-                pointAt = vector3(322.71, -217.57, 54.59), -- Karakterin başına bak
-                fov = 50.0,
-                duration = 2000, -- 2 saniye bu pozisyonda kal
-            },
             follow = {
                 offset = vector3(-0.8, 3.2, 0.0), -- Karakterin önünden soldan (x negatif = solda, y = mesafe, z = yükseklik)
                 fov = 40.0, -- Daha dar açı - karakter daha yakın ve büyük görünür (portre modu gibi)
             },
             transition = {
                 duration = 3000, -- Sky'dan karaktere geçiş süresi (milisaniye)
-                easeType = "smooth", -- Yumuşak geçiş
             }
         },
 
@@ -54,21 +46,8 @@ Config.Camera = {
     },
 
     static = {
-        coords = vector4(-1355.93, -1487.78, 520.75, 120.0), -- Kamera pozisyonu
         fov = 40.0, -- Dar açı - karakter daha yakın ve büyük (portre modu gibi)
         portraitMode = true, -- Portre modu blur efekti - false yapın blur istemiyorsanız
-
-
-
-        characterPosition = vector4(-1360.0, -1495.0, 519.75, 300.0),
-
-        animations = {
-            "WORLD_HUMAN_STAND_MOBILE",    -- Telefonda
-            "WORLD_HUMAN_SMOKING",         -- Sigara içiyor
-            "WORLD_HUMAN_AA_COFFEE",       -- Kahve içiyor
-            "WORLD_HUMAN_CLIPBOARD",       -- Panoya bakıyor
-            "WORLD_HUMAN_STAND_IMPATIENT", -- Sabırsız duruş
-        }
     }
 }
 
@@ -98,20 +77,9 @@ Config.SpawnLocations = {
     }
 }
 
--- Ped Modelleri (Karakter oluşturma için)
-Config.PedModels = {
-    male = {
-        "mp_m_freemode_01"
-    },
-    female = {
-        "mp_f_freemode_01"
-    }
-}
-
 Config.StartingItems = {} -- Boş bırakın, QB-Core'un starter items'ını kullanır
 
 Config.UI = {
-    useMouse = true, -- Fare kontrolünü aç/kapa
     enableEscapeKey = true, -- ESC tuşu ile kapatmayı aç/kapa
     defaultLanguage = "en" -- Varsayılan dil: "en" veya "tr"
 }

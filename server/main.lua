@@ -137,6 +137,13 @@ RegisterNetEvent('qrp-multicharacter:server:createCharacter', function(data)
     newData.cid = data.cid
     newData.charinfo = data
 
+    if Config.StartingMoney then
+        newData.money = {
+            cash = Config.StartingMoney.cash,
+            bank = Config.StartingMoney.bank
+        }
+    end
+
     if QBCore.Player.Login(src, false, newData) then
         Wait(500)
 
@@ -164,6 +171,8 @@ end)
 
 RegisterNetEvent('qrp-multicharacter:server:deleteCharacter', function(citizenid)
     local src = source
+
+    if not Config.DeleteCharacter.enabled then return end
 
     if DeleteCharacter(src, citizenid) then
         local license = QBCore.Functions.GetIdentifier(src, 'license')
